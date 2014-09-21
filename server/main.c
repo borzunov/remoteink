@@ -1,6 +1,7 @@
 #include "../common/protocol.h"
 #include "main.h"
 #include "options.h"
+#include "profiler.h"
 #include "screen.h"
 #include "transfer.h"
 
@@ -9,8 +10,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
+
+#define MAX_FPS 20
 
 // The top and bottom of the screen will be treated separately. This is useful,
 // for example, in a word processor, when there are small updates in the middle
@@ -31,16 +33,22 @@ void show_conn_error(const char *message) {
 }
 
 void show_client_error() {
+#ifdef ENABLE_PROFILER
+    profiler_save("profiler.log"); //
+#endif
+    
     show_error("Connection closed");
 }
 
+#define MIN_FRAME_DURATION ((NSECS_PER_SEC) / (MAX_FPS))
+
 int main(int argc, char *argv[]) {
-    printf("InkMonitor v0.01 Alpha 3 - Server\n");
+    printf("InkMonitor v0.01 Alpha 4 - Server\n");
     
     parse_options(argc, argv);
     
     screenshot_init();
-    printf("[*] Monitor resolution: %dx%d\n", screen->width, screen->height);
+    printf("    Monitor resolution: %dx%d\n", screen->width, screen->height);
         
     int serv_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (serv_fd < 0)
@@ -61,7 +69,7 @@ int main(int argc, char *argv[]) {
     
     struct sockaddr_in *client_addr;
     socklen_t client_len = sizeof (client_addr);
-    printf("[+] Server ready, listen on %s:%d\n", server_host, server_port);
+    printf("[+] Listen on %s:%d\n", server_host, server_port);
     
     int conn_fd = accept(
             serv_fd, (struct sockaddr *) &client_addr, &client_len);
@@ -83,7 +91,7 @@ int main(int argc, char *argv[]) {
     unsigned height_div1 = client_height * HEIGHT_DIV_NOM / HEIGHT_DIV_DENOM;
     unsigned height_div2 = client_height *
             (HEIGHT_DIV_DENOM - HEIGHT_DIV_NOM) / HEIGHT_DIV_DENOM;
-    printf("[*] Reader screen resolution: %ux%u\n",
+    printf("    Reader resolution: %ux%u\n",
             client_width, client_height);
     
     if (start_x <= -screen->width || start_x >= screen->width ||
@@ -99,15 +107,20 @@ int main(int argc, char *argv[]) {
     image_send_all(conn_fd, data, client_width, client_height);
     
     int frames = 0;
-    time_t start_time = time(NULL);
     while (1) {
+        long long frame_start_time = get_time_nsec();
+    
         stat_XM_compressed = 0;
         stat_CRN_compressed = 0;
+        
+        PROFILER_BEGIN(STAGE_SHOT);
         
         Imlib_Image next_image = screenshot_get(start_x, start_y,
                 client_width, client_height);
         imlib_context_set_image(next_image);
         DATA32 *next_data = imlib_image_get_data_for_reading_only();
+        
+        PROFILER_END(STAGE_SHOT);
         
         image_send_diff(conn_fd, data, next_data,
                 0, client_width, height_div1);
@@ -131,11 +144,18 @@ int main(int argc, char *argv[]) {
                         (double) stat_XM_compressed) * 100.);
             printf("[*] Total traffic: %.2lf KB\n",
                     stat_CRN_compressed / 1024.);
-                    
-            double interval = difftime(time(NULL), start_time);
-            if (interval >= 1.0)
-                printf("[*] FPS %.2lf\n", frames / interval);
         }
+        
+        long long frame_duration = get_time_nsec() - frame_start_time;
+        long long sleep_time = MIN_FRAME_DURATION - frame_duration;
+        if (sleep_time > 0)
+            usleep(sleep_time / NSECS_PER_MSEC);
+#ifdef ENABLE_PROFILER
+        else
+        if (sleep_time < 0)
+            printf("Too slow! Frame duration is %lld ms.\n",
+                    frame_duration / NSECS_PER_MSEC);
+#endif
     }
 
     close(conn_fd);

@@ -1,0 +1,5 @@
+*.o
+*.log
+client/obj_*
+server/inkmonitor-server
+research/

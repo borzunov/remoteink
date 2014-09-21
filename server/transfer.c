@@ -1,12 +1,31 @@
 #include "../common/protocol.h"
 #include "main.h"
 #include "options.h"
+#include "profiler.h"
 #include "transfer.h"
 
 char buffer[BUFFER_SIZE];
 
 int stat_XM_compressed;
 int stat_CRN_compressed;
+
+void send_buffer(int conn_fd, const char *buffer, int len) {
+    PROFILER_BEGIN(STAGE_TRANSFER);
+    
+    if (write(conn_fd, buffer, len) < 0)
+        show_client_error();
+        
+    PROFILER_END(STAGE_TRANSFER);
+}
+
+void wait_confirm(int conn_fd) {
+    PROFILER_BEGIN(STAGE_DRAW);
+    
+    if (read(conn_fd, buffer, 1) != 1 || buffer[0] != RES_CONFIRM)
+        show_client_error();
+    
+    PROFILER_END(STAGE_DRAW);
+}
 
 void image_send_all(int conn_fd, const DATA32 *image,
         unsigned width, unsigned height) {
@@ -26,10 +45,8 @@ void image_send_all(int conn_fd, const DATA32 *image,
 
     buffer[i++] = CMD_SOFT_UPDATE;
     
-    if (write(conn_fd, buffer, i) < 0)
-        show_client_error();
-    if (read(conn_fd, buffer, i) != 1 || buffer[0] != RES_CONFIRM)
-        show_client_error();
+    send_buffer(conn_fd, buffer, i);
+    wait_confirm(conn_fd);
 }
 
 unsigned color = 0;
@@ -37,6 +54,8 @@ unsigned color = 0;
 void image_send_diff(int conn_fd,
         const DATA32 *prev_image, const DATA32 *next_image,
         unsigned y_begin, unsigned width, unsigned height) {
+    PROFILER_BEGIN(STAGE_DIFF);
+    
     unsigned x, y;
     int i = 0;
     
@@ -101,7 +120,9 @@ void image_send_diff(int conn_fd,
                 is_repeat_before = 0;
             }
         }
-    if (x1 <= x2 && y1 <= y2) {
+        
+    int need_send = (x1 <= x2 && y1 <= y2);
+    if (need_send) {
         buffer[i++] = CMD_PARTIAL_UPDATE;
         WRITE_COORD(x1, buffer, i);
         WRITE_COORD(y1, buffer, i);
@@ -111,11 +132,12 @@ void image_send_diff(int conn_fd,
         stat_XM_compressed += 9;
         stat_CRN_compressed += 14; // 5 for CMD_RESET_POSITION at the beginning
                                    // and 9 for CMD_PARTIAL_UPDATE now
+    }
+    
+    PROFILER_END(STAGE_DIFF);
         
-        if (write(conn_fd, buffer, i) < 0)
-            show_client_error();
-            
-        if (read(conn_fd, buffer, 1) != 1 || buffer[0] != RES_CONFIRM)
-            show_client_error();
+    if (need_send) {
+        send_buffer(conn_fd, buffer, i);
+        wait_confirm(conn_fd);
     }
 }

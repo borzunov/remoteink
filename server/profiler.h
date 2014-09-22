@@ -2,7 +2,11 @@
 #define PROFILER_H
 
 
-#define ENABLE_PROFILER //
+#define NSECS_PER_MSEC (1000LL * 1000)
+#define NSECS_PER_SEC ((NSECS_PER_MSEC) * 1000)
+
+long long get_time_nsec();
+
 
 /* Every iteration of mainloop contains 5 stages:
  *   1). Take part of the screenshot
@@ -31,28 +35,12 @@
 #define STAGE_TRANSFER 2
 #define STAGE_DRAW 3
 
-
-#define NSECS_PER_MSEC (1000LL * 1000)
-#define NSECS_PER_SEC ((NSECS_PER_MSEC) * 1000)
-
-long long get_time_nsec();
-
-#ifdef ENABLE_PROFILER
+extern long long traffic_diffs, traffic_uncompressed;
 
 void profiler_start(int stage);
 void profiler_finish(int stage);
 
 void profiler_save(const char *filename);
-
-#define PROFILER_BEGIN profiler_start
-#define PROFILER_END profiler_finish
-
-#else
-
-#define PROFILER_BEGIN(stage)
-#define PROFILER_END(stage)
-
-#endif
 
 
 #endif

@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -O3
+CFLAGS=-Wall -O3
 
 all: inkmonitor-server
 

@@ -6,25 +6,22 @@
 
 char buffer[BUFFER_SIZE];
 
-int stat_XM_compressed;
-int stat_CRN_compressed;
-
 void send_buffer(int conn_fd, const char *buffer, int len) {
-    PROFILER_BEGIN(STAGE_TRANSFER);
+    profiler_start(STAGE_TRANSFER);
     
     if (write(conn_fd, buffer, len) < 0)
         show_client_error();
         
-    PROFILER_END(STAGE_TRANSFER);
+    profiler_finish(STAGE_TRANSFER);
 }
 
 void wait_confirm(int conn_fd) {
-    PROFILER_BEGIN(STAGE_DRAW);
+    profiler_start(STAGE_DRAW);
     
     if (read(conn_fd, buffer, 1) != 1 || buffer[0] != RES_CONFIRM)
         show_client_error();
     
-    PROFILER_END(STAGE_DRAW);
+    profiler_finish(STAGE_DRAW);
 }
 
 void image_send_all(int conn_fd, const DATA32 *image,
@@ -54,7 +51,7 @@ unsigned color = 0;
 void image_send_diff(int conn_fd,
         const DATA32 *prev_image, const DATA32 *next_image,
         unsigned y_begin, unsigned width, unsigned height) {
-    PROFILER_BEGIN(STAGE_DIFF);
+    profiler_start(STAGE_DIFF);
     
     unsigned x, y;
     int i = 0;
@@ -82,8 +79,7 @@ void image_send_diff(int conn_fd,
                     WRITE_COUNT(skipped_before, buffer, i);
                     skipped_before = 0;
                     
-                    stat_XM_compressed += 5;
-                    stat_CRN_compressed += 4;
+                    traffic_diffs += 4;
                 }
                 if (next_pixel != color) {
                     buffer[i++] = CMD_PUT_COLOR;
@@ -91,7 +87,7 @@ void image_send_diff(int conn_fd,
                     color = next_pixel;
                     is_repeat_before = 0;
                     
-                    stat_CRN_compressed += 4;
+                    traffic_diffs += 4;
                 } else
                 if (is_repeat_before) {
                     // count++ in previos CMD_PUT_REPEAT
@@ -102,10 +98,8 @@ void image_send_diff(int conn_fd,
                     WRITE_COUNT(1, buffer, i);
                     is_repeat_before = 1;
                     
-                    stat_CRN_compressed += 4;
+                    traffic_diffs += 4;
                 }
-                
-                stat_XM_compressed += 4;
                 
                 if (x < x1)
                     x1 = x;
@@ -129,12 +123,11 @@ void image_send_diff(int conn_fd,
         WRITE_COORD(x2 - x1 + 1, buffer, i);
         WRITE_COORD(y2 - y1 + 1, buffer, i);
         
-        stat_XM_compressed += 9;
-        stat_CRN_compressed += 14; // 5 for CMD_RESET_POSITION at the beginning
-                                   // and 9 for CMD_PARTIAL_UPDATE now
+        traffic_diffs += 14; // 5 for CMD_RESET_POSITION at the beginning
+                             // and 9 for CMD_PARTIAL_UPDATE now
     }
     
-    PROFILER_END(STAGE_DIFF);
+    profiler_finish(STAGE_DIFF);
         
     if (need_send) {
         send_buffer(conn_fd, buffer, i);

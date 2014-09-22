@@ -14,8 +14,5 @@ extern void image_send_diff(int conn_fd,
 #define BUFFER_SIZE 4 * 1024 * 1024
 extern char buffer[BUFFER_SIZE];
 
-extern int stat_XM_compressed;
-extern int stat_CRN_compressed;
-
 
 #endif

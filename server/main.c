@@ -7,6 +7,7 @@
 
 #include <netdb.h>
 #include <netinet/in.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,7 +24,20 @@
 #define HEIGHT_DIV_NOM 1
 #define HEIGHT_DIV_DENOM 5
 
+void exit_handler() {
+    if (stats_file) {
+        profiler_save(stats_file);
+        printf("[*] Stats saved to \"%s\"\n", stats_file);
+    }
+}
+
+void signal_handler(int code) {
+    exit_handler();
+    exit(EXIT_SUCCESS);
+}
+
 void show_error(const char *error) {
+    exit_handler();
     fprintf(stderr, "[-] Error: %s\n", error);
     exit(EXIT_FAILURE);
 }
@@ -33,16 +47,14 @@ void show_conn_error(const char *message) {
 }
 
 void show_client_error() {
-#ifdef ENABLE_PROFILER
-    profiler_save("profiler.log"); //
-#endif
-    
     show_error("Connection closed");
 }
 
 #define MIN_FRAME_DURATION ((NSECS_PER_SEC) / (MAX_FPS))
 
 int main(int argc, char *argv[]) {
+    signal(SIGINT, signal_handler);
+    
     printf("InkMonitor v0.01 Alpha 4 - Server\n");
     
     parse_options(argc, argv);
@@ -106,21 +118,17 @@ int main(int argc, char *argv[]) {
     
     image_send_all(conn_fd, data, client_width, client_height);
     
-    int frames = 0;
     while (1) {
         long long frame_start_time = get_time_nsec();
-    
-        stat_XM_compressed = 0;
-        stat_CRN_compressed = 0;
         
-        PROFILER_BEGIN(STAGE_SHOT);
+        profiler_start(STAGE_SHOT);
         
         Imlib_Image next_image = screenshot_get(start_x, start_y,
                 client_width, client_height);
         imlib_context_set_image(next_image);
         DATA32 *next_data = imlib_image_get_data_for_reading_only();
         
-        PROFILER_END(STAGE_SHOT);
+        profiler_finish(STAGE_SHOT);
         
         image_send_diff(conn_fd, data, next_data,
                 0, client_width, height_div1);
@@ -133,29 +141,16 @@ int main(int argc, char *argv[]) {
         image = next_image;
         data = next_data;
     
-        frames++;
-        if (show_stat) {
-            printf("    Compression: XM / original: %.2lf%%\n",
-                    (stat_XM_compressed /
-                    (double) (client_width * client_height * 4)) * 100.);
-            if (stat_XM_compressed)
-                printf("    Compression: CRN / XM: %.2lf%%\n",
-                        (stat_CRN_compressed /
-                        (double) stat_XM_compressed) * 100.);
-            printf("[*] Total traffic: %.2lf KB\n",
-                    stat_CRN_compressed / 1024.);
-        }
+        traffic_uncompressed += client_width * client_height * 4;
         
         long long frame_duration = get_time_nsec() - frame_start_time;
         long long sleep_time = MIN_FRAME_DURATION - frame_duration;
         if (sleep_time > 0)
             usleep(sleep_time / NSECS_PER_MSEC);
-#ifdef ENABLE_PROFILER
         else
-        if (sleep_time < 0)
-            printf("Too slow! Frame duration is %lld ms.\n",
+        if (stats_file && sleep_time < 0)
+            printf("[~] Too slow! Frame duration is %lld ms.\n",
                     frame_duration / NSECS_PER_MSEC);
-#endif
     }
 
     close(conn_fd);

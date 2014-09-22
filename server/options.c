@@ -7,18 +7,16 @@
 
 const char *server_host = "0.0.0.0";
 int server_port = 9312;
-
 int start_x = 0;
 int start_y = 0;
-
-int show_stat = 0;
+const char *stats_file = 0;
 
 char message_buffer[256];
 
 void show_version() {
     printf(
         "Server for tool for using E-Ink reader as computer monitor\n"
-        "Copyright 2013 Alexander Borzunov\n"
+        "Copyright (c) 2013-2014 Alexander Borzunov\n"
     );
 }
 
@@ -32,20 +30,21 @@ void show_help() {
         "\n"
         "Network options:\n"
         "    -H, --host HOST     Set host for server.\n"
-        "                        Server listens on %s by default.\n"
+        "                        Default: %s\n"
         "    -P, --port PORT     Set post for server.\n"
-        "                        Port is %d by default.\n"
+        "                        Default: %d\n"
         "\n"
         "Image options:\n"
         "    -x, --position X,Y  Set position of left top corner of grabbed part\n"
         "                        of the screen. If reader's screen greater than monitor,\n"
         "                        you can set positions with negative X and Y\n"
         "                        to move image to the center of reader's screen.\n"
-        "                        Position is (%d, %d) by default.\n"
+        "                        Default: %d,%d\n"
         "\n"
         "Debug options:\n"
-        "    -v, --verbose       Show some statistics, including FPS and\n"
-        "                        size of transferred data.\n",
+        "    --stats FILE        Collect statistics about perfomance and data transfer\n"
+        "                        and save it to FILE. Some warnings may be displayed to\n"
+        "                        standard output.\n",
         server_host, server_port, start_x, start_y
     );
 }
@@ -96,8 +95,8 @@ void parse_options(int argc, char *argv[]) {
                 show_error("Incorrect position. The position should be "
                            "a string with format \"X,Y\" e.g. \"100,100\".");
         } else
-        if (!strcmp(argv[i], "-v") || !strcmp(argv[i], "--verbose"))
-            show_stat = 1;
+        if ((value = get_key_value(argc, argv, &i, "--stats")))
+            stats_file = value;
         else {
             sprintf(message_buffer, "Incorrect argument \"%s\"", argv[i]);
             show_error(message_buffer);

@@ -24,8 +24,9 @@ void wait_confirm(int conn_fd) {
     profiler_finish(STAGE_DRAW);
 }
 
-void image_send_all(int conn_fd, const DATA32 *image,
-        unsigned width, unsigned height) {
+void image_send_all(
+    int conn_fd, const DATA32 *image, unsigned width, unsigned height
+) {
     unsigned x, y;
     int i = 0;
     
@@ -48,31 +49,42 @@ void image_send_all(int conn_fd, const DATA32 *image,
 
 unsigned color = 0;
 
-void image_send_diff(int conn_fd,
-        const DATA32 *prev_image, const DATA32 *next_image,
-        unsigned y_begin, unsigned width, unsigned height) {
+void image_send_diff(
+    int conn_fd, const DATA32 *prev_image, const DATA32 *next_image,
+    unsigned client_width, unsigned client_height,
+    unsigned region_left, unsigned region_top,
+    unsigned region_width, unsigned region_height
+) {
     profiler_start(STAGE_DIFF);
     
-    unsigned x, y;
+    unsigned region_right = region_left + region_width;
+    unsigned region_bottom = region_top + region_height;
+    
     int i = 0;
     
     int skipped_before = 0;
     int is_repeat_before = 0;
     
     buffer[i++] = CMD_RESET_POSITION;
-    WRITE_COORD(0, buffer, i);
-    WRITE_COORD(y_begin, buffer, i);
+    WRITE_COORD(region_left, buffer, i);
+    WRITE_COORD(region_top, buffer, i);
     
-    unsigned x1 = width - 1;
-    unsigned y1 = y_begin + height - 1;
-    unsigned x2 = 0;
-    unsigned y2 = y_begin;
+    traffic_diffs += 5;
     
-    unsigned y_end = y_begin + height;
-    for (y = y_begin; y < y_end; y++)
-        for (x = 0; x < width; x++) {
-            unsigned prev_pixel = prev_image[y * width + x];
-            unsigned next_pixel = next_image[y * width + x];
+    unsigned x1 = region_right - 1;
+    unsigned y1 = region_bottom - 1;
+    unsigned x2 = region_left;
+    unsigned y2 = region_top;
+    
+    // If the client screen divided horizontally into more than one
+    // region, we need to skip pixels from another regions
+    unsigned line_skip = client_width - region_width;
+    
+    unsigned y, x;
+    for (y = region_top; y < region_bottom; y++) {
+        for (x = region_left; x < region_right; x++) {
+            unsigned prev_pixel = prev_image[y * client_width + x];
+            unsigned next_pixel = next_image[y * client_width + x];
             if (prev_pixel != next_pixel) {
                 if (skipped_before) {
                     buffer[i++] = CMD_SKIP;
@@ -115,6 +127,12 @@ void image_send_diff(int conn_fd,
             }
         }
         
+        if (line_skip) {
+            skipped_before += line_skip;
+            is_repeat_before = 0;
+        }
+    }
+        
     int need_send = (x1 <= x2 && y1 <= y2);
     if (need_send) {
         buffer[i++] = CMD_PARTIAL_UPDATE;
@@ -123,8 +141,7 @@ void image_send_diff(int conn_fd,
         WRITE_COORD(x2 - x1 + 1, buffer, i);
         WRITE_COORD(y2 - y1 + 1, buffer, i);
         
-        traffic_diffs += 14; // 5 for CMD_RESET_POSITION at the beginning
-                             // and 9 for CMD_PARTIAL_UPDATE now
+        traffic_diffs += 9;
     }
     
     profiler_finish(STAGE_DIFF);

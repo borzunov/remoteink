@@ -2,9 +2,9 @@
 #define MAIN_H
 
 
-void show_error(const char *error);
-void show_conn_error(const char *message);
-void show_client_error();
+extern void show_error(const char *error);
+extern void show_conn_error(const char *message);
+extern void show_client_error();
 
 
 #endif

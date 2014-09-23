@@ -7,8 +7,8 @@
 
 const char *server_host = "0.0.0.0";
 int server_port = 9312;
-int start_x = 0;
-int start_y = 0;
+int screen_left = 0;
+int screen_top = 0;
 const char *stats_file = 0;
 
 char message_buffer[256];
@@ -45,7 +45,7 @@ void show_help() {
         "    --stats FILE        Collect statistics about perfomance and data transfer\n"
         "                        and save it to FILE. Some warnings may be displayed to\n"
         "                        standard output.\n",
-        server_host, server_port, start_x, start_y
+        server_host, server_port, screen_left, screen_top
     );
 }
 
@@ -91,7 +91,7 @@ void parse_options(int argc, char *argv[]) {
         } else
         if ((value = get_key_value(argc, argv, &i, "-x")) ||
                 (value = get_key_value(argc, argv, &i, "--position"))) {
-            if (sscanf(value, "%d,%d", &start_x, &start_y) != 2)
+            if (sscanf(value, "%d,%d", &screen_left, &screen_top) != 2)
                 show_error("Incorrect position. The position should be "
                            "a string with format \"X,Y\" e.g. \"100,100\".");
         } else

@@ -15,17 +15,18 @@
 
 #define MAX_FPS 20
 
-// The top and bottom of the screen will be treated separately. This is useful,
-// for example, in a word processor, when there are small updates in the middle
-// of the screen (text) and in the bottom of the screen (the counters of lines
-// or characters). Then it will be updated not one big rectangle of the screen,
-// and two small ones. By default the screen will be divided into three areas
-// with height of 1 / 5, 3 / 5 and 1 / 5.
-#define HEIGHT_DIV_NOM 1
-#define HEIGHT_DIV_DENOM 5
+// Screen regions may be processed separately. This is useful,
+// for example, in the word processors, when at typing we have only two small
+// updates in the middle of the screen (text) and in the bottom of the screen
+// (the counters of lines and characters). Then it will be updated not one big
+// rectangle of the screen, but two small ones.
+#define WIDTH_DIV 1
+#define HEIGHT_DIV 3
+
+int has_stats = 0;
 
 void exit_handler() {
-    if (stats_file) {
+    if (has_stats && stats_file) {
         profiler_save(stats_file);
         printf("[*] Stats saved to \"%s\"\n", stats_file);
     }
@@ -100,19 +101,22 @@ int main(int argc, char *argv[]) {
     int i = -1;
     READ_COORD(client_width, buffer, i);
     READ_COORD(client_height, buffer, i);
-    unsigned height_div1 = client_height * HEIGHT_DIV_NOM / HEIGHT_DIV_DENOM;
-    unsigned height_div2 = client_height *
-            (HEIGHT_DIV_DENOM - HEIGHT_DIV_NOM) / HEIGHT_DIV_DENOM;
     printf("    Reader resolution: %ux%u\n",
             client_width, client_height);
+            
+    unsigned region_width = client_width / WIDTH_DIV;
+    unsigned region_height = client_height / HEIGHT_DIV;
     
-    if (start_x <= -screen->width || start_x >= screen->width ||
-            start_y <= -screen->height || start_y >= screen->height)
-        show_error("Incorrect position of left top corner of grabbed part "
+    if (
+        screen_left <= -screen->width || screen_left >= screen->width ||
+        screen_top <= -screen->height || screen_top >= screen->height
+    )
+        show_error("Incorrect position of the left top corner of grabbed part "
                    "of the screen. Failed to fill reader screen.");
     
-    Imlib_Image image = screenshot_get(start_x, start_y,
-            client_width, client_height);
+    Imlib_Image image = screenshot_get(
+        screen_left, screen_top, client_width, client_height
+    );
     imlib_context_set_image(image);
     DATA32 *data = imlib_image_get_data_for_reading_only();
     
@@ -123,25 +127,30 @@ int main(int argc, char *argv[]) {
         
         profiler_start(STAGE_SHOT);
         
-        Imlib_Image next_image = screenshot_get(start_x, start_y,
-                client_width, client_height);
+        Imlib_Image next_image = screenshot_get(
+            screen_left, screen_top, client_width, client_height
+        );
         imlib_context_set_image(next_image);
         DATA32 *next_data = imlib_image_get_data_for_reading_only();
         
         profiler_finish(STAGE_SHOT);
         
-        image_send_diff(conn_fd, data, next_data,
-                0, client_width, height_div1);
-        image_send_diff(conn_fd, data, next_data,
-                height_div1, client_width, height_div2 - height_div1);
-        image_send_diff(conn_fd, data, next_data,
-                height_div2, client_width, client_height - height_div2);
+        unsigned i, j;
+        for (i = 0; i < HEIGHT_DIV; i++)
+            for (j = 0; j < WIDTH_DIV; j++)
+                image_send_diff(
+                    conn_fd, data, next_data,
+                    client_width, client_height,
+                    j * region_width, i * region_height,
+                    region_width, region_height
+                );
                 
         gib_imlib_free_image_and_decache(image);
         image = next_image;
         data = next_data;
     
         traffic_uncompressed += client_width * client_height * 4;
+        has_stats = 1;
         
         long long frame_duration = get_time_nsec() - frame_start_time;
         long long sleep_time = MIN_FRAME_DURATION - frame_duration;

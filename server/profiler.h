@@ -37,10 +37,10 @@ long long get_time_nsec();
 
 extern long long traffic_diffs, traffic_uncompressed;
 
-void profiler_start(int stage);
-void profiler_finish(int stage);
+extern void profiler_start(int stage);
+extern void profiler_finish(int stage);
 
-void profiler_save(const char *filename);
+extern void profiler_save(const char *filename);
 
 
 #endif

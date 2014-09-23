@@ -20,7 +20,7 @@ void clear_labels() {
     label_y = 10;
     SetFont(font_title, BLACK);
     
-    DrawString(label_x, label_y, "InkMonitor v0.01 Alpha 3");
+    DrawString(label_x, label_y, "InkMonitor v0.01 Alpha 4");
     label_y += BIG_INTERVAL;
     SetFont(font_comment, BLACK);
 }
@@ -31,7 +31,7 @@ void show_intro() {
     DrawString(label_x, label_y,
             "Tool for using E-Ink reader as computer monitor");
     label_y += SMALL_INTERVAL;
-    DrawString(label_x, label_y, "Copyright 2013 Alexander Borzunov");
+    DrawString(label_x, label_y, "Copyright (c) 2013-2014 Alexander Borzunov");
     label_y += BIG_INTERVAL;
     
     DrawString(label_x, label_y, "Controls:");
@@ -74,12 +74,11 @@ inline void show_client_error() {
 
 void query_network() {
     if (!(QueryNetwork() & NET_CONNECTED)) {
-        if (NetConnect(NULL) != NET_OK)
-            show_conn_error("Network is unreachable");
-        else
-            // Network selection dialog can ruin the image on the screen. Let's
-            // wait until it disappears.
-            sleep(1);
+        NetConnect(NULL);
+        
+        // Network selection dialog can ruin the image on the screen. Let's
+        // wait until it disappears.
+        sleep(1);
     }
 }
 

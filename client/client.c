@@ -185,7 +185,7 @@ void client_mainloop() {
 void *client_connect(void *arg) {
     clear_labels();
     add_label("Connecting...");
-    SoftUpdate();
+    ui_repaint(controls, controls_top);
     
     query_network();
     
@@ -205,7 +205,7 @@ void *client_connect(void *arg) {
         show_conn_error(NULL);
         
     add_label("Starting...");
-    SoftUpdate();
+    ui_repaint(controls, controls_top);
     
     if (write(conn_fd, HEADER "\n", strlen(HEADER) + 1) < 0)
         show_client_error();

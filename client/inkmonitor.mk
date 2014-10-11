@@ -1,1 +1,1 @@
-SOURCES += client.c main.c options.c
+SOURCES += client.c main.c options.c ui.c

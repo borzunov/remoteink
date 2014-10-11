@@ -2,7 +2,8 @@
 #define OPTIONS_H
 
 
-extern void read_options(const char *filename);
+void load_options(const char *filename);
+void save_options(const char *filename);
 
 
 #define OPTION_SIZE 1024

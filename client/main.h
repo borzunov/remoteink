@@ -2,13 +2,18 @@
 #define MAIN_H
 
 
-extern void clear_labels();
-extern void add_label(const char *message);
-extern void show_error(const char *error);
-extern void show_conn_error(const char *message);
-extern void show_client_error();
+#define CONTROLS_MAX_COUNT 32
+extern struct UIControl *controls[CONTROLS_MAX_COUNT];
+extern int controls_top;
 
-extern void query_network();
+void clear_labels();
+void add_label(const char *message);
+
+void show_error(const char *error);
+void show_conn_error(const char *message);
+void show_client_error();
+
+void query_network();
 
 
 #endif

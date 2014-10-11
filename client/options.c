@@ -6,7 +6,7 @@
 char server_host[OPTION_SIZE];
 int server_port = 9312;
 
-void read_options(const char *filename) {
+void load_options(const char *filename) {
     // Set defaults
     strcpy(server_host, "192.168.0.101");
     
@@ -47,5 +47,18 @@ void read_options(const char *filename) {
         }
     }
     
+    fclose(f);
+}
+
+void save_options(const char *filename) {
+    FILE *f = fopen(filename, "w");
+    if (f == NULL)
+        return;
+
+    fprintf(f,
+        "[Server]\n"
+        "Host = %s\n"
+        "Port = %d\n",
+    server_host, server_port);
     fclose(f);
 }

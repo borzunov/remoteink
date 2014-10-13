@@ -9,6 +9,8 @@ extern int controls_top;
 void clear_labels();
 void add_label(const char *message);
 
+void show_intro();
+
 void show_error(const char *error);
 void show_conn_error(const char *message);
 void show_client_error();

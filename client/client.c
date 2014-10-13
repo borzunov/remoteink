@@ -15,9 +15,11 @@ unsigned x, y, color;
 
 int conn_fd;
 
+int client_process;
+
 inline void client_send_confirm() {
     buffer[0] = RES_CONFIRM;
-    if (write(conn_fd, buffer, 1) < 0)
+    if (write(conn_fd, buffer, 1) < 0 && client_process)
         show_client_error();
 }
 
@@ -163,17 +165,23 @@ int client_exec(const char *commands, int len) {
     return len;
 }
 
+void client_shutdown() {
+    shutdown(conn_fd, SHUT_RDWR);
+}
+
 void client_mainloop() {
-    ClearScreen();
     x = 0;
     y = 0;
     color = 0;
     
     int prefix_size = 0;
-    while (1) {
+    client_process = 1;
+    while (client_process) {
         int read_size = read(conn_fd,
                 buffer + prefix_size, BUFFER_SIZE - prefix_size);
-        if (read_size <= 0)
+        if (!client_process || !read_size)
+            break;
+        if (read_size < 0)
             show_client_error();
         
         int executed_size = client_exec(buffer, prefix_size + read_size);
@@ -183,11 +191,9 @@ void client_mainloop() {
 }
 
 void *client_connect(void *arg) {
-    clear_labels();
-    add_label("Connecting...");
-    ui_repaint(controls, controls_top);
-    
     query_network();
+    ClearScreen();
+    ShowHourglass();
     
     conn_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (conn_fd < 0)
@@ -203,9 +209,6 @@ void *client_connect(void *arg) {
     
     if (connect(conn_fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
         show_conn_error(NULL);
-        
-    add_label("Starting...");
-    ui_repaint(controls, controls_top);
     
     if (write(conn_fd, HEADER "\n", strlen(HEADER) + 1) < 0)
         show_client_error();
@@ -215,8 +218,13 @@ void *client_connect(void *arg) {
     WRITE_COORD(screen_height, buffer, i);
     if (write(conn_fd, buffer, COORD_SIZE * 2) < 0)
         show_client_error();
-        
+    HideHourglass();
+    
     client_mainloop();
     
+    if (close(conn_fd) < 0)
+        show_client_error();
+    
+    show_intro();
     return NULL;
 }

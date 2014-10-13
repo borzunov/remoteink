@@ -2,10 +2,13 @@
 #define CLIENT_H
 
 
-extern void *client_connect(void *arg);
+void *client_connect(void *arg);
+void client_shutdown();
 
 
 extern unsigned screen_width, screen_height;
+
+extern int client_process;
 
 
 #endif

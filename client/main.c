@@ -12,11 +12,12 @@
 
 #define TEXT_TITLE "InkMonitor v0.01 Alpha 4"
 
-enum {STAGE_LABELS, STAGE_MONITOR} stage = STAGE_LABELS;
+enum {STAGE_INTRO, STAGE_MONITOR} stage = STAGE_INTRO;
 
 #define MESSAGE_MSECS 1000
 
 ifont *font_title, *font_label, *font_caption;
+int font_caption_offset;
 #define LINE_SPACING 3
 #define PARAGRAPH_EXTRA_SPACING 12
 
@@ -66,10 +67,10 @@ void change_port_handler(char *buffer) {
         char message_buffer[256];
         sprintf(
             message_buffer,
-            "Port number must be in the interval from %d to %d!",
+            "Port number should be in the interval from %d to %d",
             PORT_MIN, PORT_MAX
         );
-        Message(ICON_ERROR, "Error", message_buffer, MESSAGE_MSECS);
+        show_error(message_buffer);
     }
 }
 
@@ -113,10 +114,8 @@ const char *edit_text = "Edit";
 
 inline void add_field(const char *caption, const char *text,
         void (*edit_handler)()) {
-    int font_caption_offset = (font_label->height - font_caption->height) / 2;
     int edit_text_width = StringWidth(edit_text);
-    int button_left = screen_width - SCREEN_PADDING -
-            2 * UI_BUTTON_PADDING - edit_text_width;
+    int button_right = screen_width - SCREEN_PADDING;
             
     controls[controls_top++] = ui_label_create(
         SCREEN_PADDING, FIELD_TEXT_MARGIN_LEFT,
@@ -131,7 +130,7 @@ inline void add_field(const char *caption, const char *text,
         1
     ); // Content
     controls[controls_top++] = ui_button_create(
-        button_left, screen_width - SCREEN_PADDING,
+        button_right - 2 * UI_BUTTON_PADDING - edit_text_width, button_right,
         label_y - UI_BUTTON_PADDING + font_caption_offset, UI_ALIGN_LEFT,
         edit_text, font_caption, BLACK,
         edit_handler,
@@ -141,7 +140,26 @@ inline void add_field(const char *caption, const char *text,
     label_y += font_label->height + LINE_SPACING + PARAGRAPH_EXTRA_SPACING;
 }
 
+pthread_t client_thread;
+
+void exec_connect() {
+    int res;
+    stage = STAGE_MONITOR;
+    if (pthread_create(&client_thread, NULL, client_connect, &res) != 0)
+        show_error("Failed to create client thread");
+}
+
+int schedule_connect = 0;
+
+void connect_handler() {
+    schedule_connect = 1;
+}
+
+const char *connect_text = "Connect";
+const char *quit_text = "Quit";
+
 void show_intro() {
+    stage = STAGE_INTRO;
     clear_labels();
     add_label("Tool for using E-Ink reader as computer monitor");
     add_label("Copyright (c) 2013-2014 Alexander Borzunov");
@@ -149,9 +167,25 @@ void show_intro() {
     
     add_label("    Controls");
     label_y += PARAGRAPH_EXTRA_SPACING;
-    add_label("Left - exit");
-    add_label("Right - start monitor");
-    label_y += PARAGRAPH_EXTRA_SPACING * 2;
+    int left = SCREEN_PADDING;
+    controls[controls_top++] = ui_button_create(
+        left, left + StringWidth(connect_text) + 2 * UI_BUTTON_PADDING,
+        label_y - UI_BUTTON_PADDING + font_caption_offset, UI_ALIGN_LEFT,
+        connect_text, font_caption, BLACK,
+        connect_handler,
+        1
+    );
+    int right = screen_width - SCREEN_PADDING;
+    controls[controls_top++] = ui_button_create(
+        right - 2 * UI_BUTTON_PADDING - StringWidth(quit_text), right,
+        label_y - UI_BUTTON_PADDING + font_caption_offset, UI_ALIGN_LEFT,
+        quit_text, font_caption, BLACK,
+        CloseApp,
+        1
+    );
+    label_y += font_label->height + LINE_SPACING + PARAGRAPH_EXTRA_SPACING;
+    // Another button
+    label_y += PARAGRAPH_EXTRA_SPACING;
     
     add_label("    Settings");
     label_y += PARAGRAPH_EXTRA_SPACING;
@@ -162,13 +196,11 @@ void show_intro() {
     ui_repaint(controls, controls_top);
 }
 
-inline void show_error(const char *error) {
-    stage = STAGE_LABELS;
-    clear_labels();
-    add_label("Error:");
-    add_label(error);
+void show_error(const char *error) {
+    HideHourglass();
+    show_intro();
     
-    ui_repaint(controls, controls_top);
+    Message(ICON_ERROR, "Error", error, MESSAGE_MSECS);
 }
 
 inline void show_conn_error(const char *message) {
@@ -191,9 +223,12 @@ void query_network() {
     }
 }
 
+void stop_monitor_handler() {
+    client_process = 0;
+    client_shutdown();
+}
+
 int main_handler(int type, int par1, int par2) {
-    pthread_t thread;
-    int res;
     switch (type) {
     case EVT_INIT:
         load_options(OPTIONS_FILE);
@@ -206,30 +241,32 @@ int main_handler(int type, int par1, int par2) {
         font_title = OpenFont("cour", 30, 1);
         font_label = OpenFont("cour", 20, 1);
         font_caption = OpenFont("cour", 17, 1);
+        font_caption_offset = (font_label->height - font_caption->height) / 2;
         break;
     case EVT_SHOW:
-        if (stage == STAGE_LABELS)
+        if (stage == STAGE_INTRO)
             show_intro();
         break;
     case EVT_KEYPRESS:
         switch (par1) {
         case KEY_LEFT:
         case KEY_PREV:
-            CloseApp();
+            if (stage == STAGE_INTRO)
+                CloseApp();
+            else
+            if (stage == STAGE_MONITOR)
+                stop_monitor_handler();
             break;
         case KEY_RIGHT:
         case KEY_NEXT:
-            if (stage == STAGE_LABELS) {
-                stage = STAGE_MONITOR;
-                if (pthread_create(&thread, NULL, &client_connect, &res) != 0)
-                    show_error("Failed to create client thread");
-            }
+            if (stage == STAGE_INTRO)
+                connect_handler();
             break;
         }
         break;
     case EVT_POINTERDOWN:
     case EVT_POINTERUP:
-        if (stage == STAGE_LABELS) {
+        if (stage == STAGE_INTRO) {
             ui_pointer(controls, controls_top, type, par1, par2);
             if (pointer_need_repaint) {
                 ui_repaint(controls, controls_top);
@@ -237,6 +274,10 @@ int main_handler(int type, int par1, int par2) {
                 pointer_need_repaint = 1;
         }
         break;
+    }
+    if (schedule_connect) {
+        exec_connect();
+        schedule_connect = 0;
     }
     return 0;
 }

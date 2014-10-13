@@ -25,16 +25,25 @@
 
 int has_stats = 0;
 
+int serv_fd, conn_fd;
+
 void exit_handler() {
+    close(conn_fd);
+    close(serv_fd);
+    
     if (has_stats && stats_file) {
         profiler_save(stats_file);
         printf("[*] Stats saved to \"%s\"\n", stats_file);
     }
 }
 
-void signal_handler(int code) {
+void sigint_handler(int code) {
     exit_handler();
     exit(EXIT_SUCCESS);
+}
+
+void sigpipe_handler(int code) {
+    show_error("Connection closed");
 }
 
 void show_error(const char *error) {
@@ -43,18 +52,16 @@ void show_error(const char *error) {
     exit(EXIT_FAILURE);
 }
 
-void show_conn_error(const char *message) {
-    show_error(message == NULL ? "Failed to start server" : message);
-}
-
-void show_client_error() {
-    show_error("Connection closed");
-}
+const char *recv_error = "Failed to read data";
+const char *send_error = "Failed to write data";
 
 #define MIN_FRAME_DURATION ((NSECS_PER_SEC) / (MAX_FPS))
 
+char conn_check_char = CONN_CHECK;
+
 int main(int argc, char *argv[]) {
-    signal(SIGINT, signal_handler);
+    signal(SIGINT, sigint_handler);
+    signal(SIGPIPE, sigpipe_handler);
     
     printf("InkMonitor v0.01 Alpha 4 - Server\n");
     
@@ -63,31 +70,30 @@ int main(int argc, char *argv[]) {
     screenshot_init();
     printf("    Monitor resolution: %dx%d\n", screen->width, screen->height);
         
-    int serv_fd = socket(AF_INET, SOCK_STREAM, 0);
+    serv_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (serv_fd < 0)
-        show_conn_error(NULL);
+        show_error("Failed to create socket");
     
     struct hostent *serv = gethostbyname(server_host);
     if (serv == NULL)
-        show_conn_error("No such host");
+        show_error("No such host");
     struct sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
     memcpy(&serv_addr.sin_addr.s_addr, serv->h_addr, serv->h_length);
     serv_addr.sin_port = htons(server_port);
     
     if (bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) < 0)
-        show_conn_error("Failed to bind this port on this host");
+        show_error("Failed to bind this port on this host");
 
-    listen(serv_fd, 1);
+    listen(serv_fd, 0);
     
     struct sockaddr_in *client_addr;
     socklen_t client_len = sizeof (client_addr);
     printf("[+] Listen on %s:%d\n", server_host, server_port);
     
-    int conn_fd = accept(
-            serv_fd, (struct sockaddr *) &client_addr, &client_len);
+    conn_fd = accept(serv_fd, (struct sockaddr *) &client_addr, &client_len);
     if (conn_fd < 0)
-        show_client_error();
+        show_error("Failed to accept a connection");
 
     int header_len = strlen(HEADER);
     if (read(conn_fd, buffer, header_len + 1) != header_len + 1 ||
@@ -96,7 +102,7 @@ int main(int argc, char *argv[]) {
     printf("[+] Accepted client connection\n");
     
     if (read(conn_fd, buffer, COORD_SIZE * 2) != COORD_SIZE * 2)
-        show_client_error();
+        show_error(recv_error);
     unsigned client_width, client_height;
     int i = -1;
     READ_COORD(client_width, buffer, i);
@@ -124,6 +130,10 @@ int main(int argc, char *argv[]) {
     
     while (1) {
         long long frame_start_time = get_time_nsec();
+        
+        // Check whether connection is dead. If so, SIGPIPE will be sent.
+        if (write(conn_fd, &conn_check_char, sizeof (char)) < 0)
+            show_error(send_error);
         
         profiler_start(STAGE_SHOT);
         
@@ -161,8 +171,4 @@ int main(int argc, char *argv[]) {
             printf("[~] Too slow! Frame duration is %lld ms.\n",
                     frame_duration / NSECS_PER_MSEC);
     }
-
-    close(conn_fd);
-    close(serv_fd);
-    return 0; 
 }

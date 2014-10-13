@@ -24,6 +24,8 @@
 
 #define HEADER "InkMonitor v0.01"
 
+#define CONN_CHECK '?'
+
 #define CMD_RESET_POSITION    'X' // RESET_POSITION(x, y)
 #define CMD_SKIP              'N' // SKIP(count)
 #define CMD_PUT_REPEAT        'R' // PUT_REPEAT(count)

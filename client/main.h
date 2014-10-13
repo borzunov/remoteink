@@ -15,6 +15,8 @@ void show_error(const char *error);
 void show_conn_error(const char *message);
 void show_client_error();
 
+extern const char *recv_error, *send_error;
+
 void query_network();
 
 

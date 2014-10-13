@@ -20,7 +20,7 @@ int client_process;
 inline void client_send_confirm() {
     buffer[0] = RES_CONFIRM;
     if (write(conn_fd, buffer, 1) < 0 && client_process)
-        show_client_error();
+        show_conn_error(send_error);
 }
 
 int client_exec(const char *commands, int len) {
@@ -28,6 +28,8 @@ int client_exec(const char *commands, int len) {
     unsigned j, count, w, h;
     for (i = 0; i < len; i++) {
         switch (commands[i]) {
+        case CONN_CHECK:
+            break;
         case CMD_RESET_POSITION:
             if (i + COORD_SIZE * 2 + 1 > len)
                 return i;
@@ -160,6 +162,8 @@ int client_exec(const char *commands, int len) {
             client_send_confirm();
             break;
         #endif
+        default:
+            show_conn_error("Unsupported command is received");
         }
     }
     return len;
@@ -182,7 +186,7 @@ void client_mainloop() {
         if (!client_process || !read_size)
             break;
         if (read_size < 0)
-            show_client_error();
+            show_conn_error(recv_error);
         
         int executed_size = client_exec(buffer, prefix_size + read_size);
         prefix_size += read_size - executed_size;
@@ -197,7 +201,7 @@ void *client_connect(void *arg) {
     
     conn_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (conn_fd < 0)
-        show_conn_error(NULL);
+        show_conn_error("Failed to create socket");
     
     struct hostent *serv = gethostbyname(server_host);
     if (serv == NULL)
@@ -207,23 +211,25 @@ void *client_connect(void *arg) {
     memcpy(&serv_addr.sin_addr.s_addr, serv->h_addr, serv->h_length);
     serv_addr.sin_port = htons(server_port);
     
-    if (connect(conn_fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
-        show_conn_error(NULL);
+    if (connect(
+        conn_fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)
+    ) < 0)
+        show_conn_error("Failed to connect");
     
     if (write(conn_fd, HEADER "\n", strlen(HEADER) + 1) < 0)
-        show_client_error();
+        show_conn_error(send_error);
 
     int i = 0;
     WRITE_COORD(screen_width, buffer, i);
     WRITE_COORD(screen_height, buffer, i);
     if (write(conn_fd, buffer, COORD_SIZE * 2) < 0)
-        show_client_error();
+        show_conn_error(send_error);
     HideHourglass();
     
     client_mainloop();
     
     if (close(conn_fd) < 0)
-        show_client_error();
+        show_conn_error("Failed to close connection");
     
     show_intro();
     return NULL;

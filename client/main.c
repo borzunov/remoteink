@@ -12,7 +12,9 @@
 
 #define TEXT_TITLE "InkMonitor v0.01 Alpha 4"
 
-enum {STAGE_INTRO, STAGE_MONITOR} stage = STAGE_INTRO;
+enum Stage {STAGE_INTRO, STAGE_MONITOR};
+
+enum Stage stage = STAGE_INTRO;
 
 #define MESSAGE_MSECS 1000
 
@@ -114,6 +116,7 @@ const char *edit_text = "Edit";
 
 inline void add_field(const char *caption, const char *text,
         void (*edit_handler)()) {
+    SetFont(font_caption, BLACK);
     int edit_text_width = StringWidth(edit_text);
     int button_right = screen_width - SCREEN_PADDING;
             
@@ -143,8 +146,10 @@ inline void add_field(const char *caption, const char *text,
 pthread_t client_thread;
 
 void exec_connect() {
-    int res;
     stage = STAGE_MONITOR;
+    SetAutoPowerOff(0);
+    
+    int res;
     if (pthread_create(&client_thread, NULL, client_connect, &res) != 0)
         show_error("Failed to create client thread");
 }
@@ -160,6 +165,8 @@ const char *quit_text = "Quit";
 
 void show_intro() {
     stage = STAGE_INTRO;
+    SetAutoPowerOff(1);
+    
     clear_labels();
     add_label("Tool for using E-Ink reader as computer monitor");
     add_label("Copyright (c) 2013-2014 Alexander Borzunov");
@@ -167,6 +174,7 @@ void show_intro() {
     
     add_label("    Controls");
     label_y += PARAGRAPH_EXTRA_SPACING;
+    SetFont(font_caption, BLACK);
     int left = SCREEN_PADDING;
     controls[controls_top++] = ui_button_create(
         left, left + StringWidth(connect_text) + 2 * UI_BUTTON_PADDING,
@@ -175,6 +183,7 @@ void show_intro() {
         connect_handler,
         1
     );
+    SetFont(font_caption, BLACK);
     int right = screen_width - SCREEN_PADDING;
     controls[controls_top++] = ui_button_create(
         right - 2 * UI_BUTTON_PADDING - StringWidth(quit_text), right,
@@ -204,14 +213,12 @@ void show_error(const char *error) {
 }
 
 inline void show_conn_error(const char *message) {
-    show_error(message == NULL ? "Connection failure" : message);
+    show_error(message);
     pthread_exit(NULL);
 }
 
-inline void show_client_error() {
-    show_error("Connection closed");
-    pthread_exit(NULL);
-}
+const char *recv_error = "Failed to read data";
+const char *send_error = "Failed to write data";
 
 void query_network() {
     if (!(QueryNetwork() & NET_CONNECTED)) {
@@ -235,8 +242,6 @@ int main_handler(int type, int par1, int par2) {
     
         screen_width = ScreenWidth();
         screen_height = ScreenHeight();
-        
-        SetAutoPowerOff(0);
         
         font_title = OpenFont("cour", 30, 1);
         font_label = OpenFont("cour", 20, 1);

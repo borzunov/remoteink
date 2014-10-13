@@ -10,7 +10,7 @@ void send_buffer(int conn_fd, const char *buffer, int len) {
     profiler_start(STAGE_TRANSFER);
     
     if (write(conn_fd, buffer, len) < 0)
-        show_client_error();
+        show_error(send_error);
         
     profiler_finish(STAGE_TRANSFER);
 }
@@ -19,7 +19,7 @@ void wait_confirm(int conn_fd) {
     profiler_start(STAGE_DRAW);
     
     if (read(conn_fd, buffer, 1) != 1 || buffer[0] != RES_CONFIRM)
-        show_client_error();
+        show_error(recv_error);
     
     profiler_finish(STAGE_DRAW);
 }

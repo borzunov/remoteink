@@ -13,6 +13,7 @@
 #include <string.h>
 #include <unistd.h>
 
+
 #define MAX_FPS 20
 
 // Screen regions may be processed separately. This is useful,
@@ -25,13 +26,15 @@
 
 int has_stats = 0;
 
+
 int serv_fd, conn_fd;
+
 
 void exit_handler() {
     close(conn_fd);
     close(serv_fd);
     
-    if (has_stats && stats_file) {
+    if (has_stats && stats_enabled) {
         profiler_save(stats_file);
         printf("[*] Stats saved to \"%s\"\n", stats_file);
     }
@@ -46,11 +49,58 @@ void sigpipe_handler(int code) {
     show_error("Connection closed");
 }
 
+
 void show_error(const char *error) {
     exit_handler();
     fprintf(stderr, "[-] Error: %s\n", error);
     exit(EXIT_FAILURE);
 }
+
+
+void show_version() {
+    printf(
+        "Server for tool for using E-Ink reader as computer monitor\n"
+        "Copyright (c) 2013-2014 Alexander Borzunov\n"
+    );
+}
+
+void show_help() {
+    show_version();
+    printf(
+        "\n"
+        "Usage:\n"
+        "    inkmonitor-server [OPTION] [CONFIG]\n"
+        "\n"
+        "Standard options:\n"
+        "    -h, --help          Display this help and exit.\n"
+        "    --version           Output version info and exit.\n"
+    );
+}
+
+
+const char *config_filename = "inkmonitor-server.ini";
+
+void parse_arguments(int argc, char *argv[]) {
+    int pos = 0;
+    int i;
+    for (i = 1; i < argc; i++) {
+        if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
+            show_help();
+            exit(EXIT_SUCCESS);
+        }
+        if (!strcmp(argv[i], "--version")) {
+            show_version();
+            exit(EXIT_SUCCESS);
+        }
+        
+        if (pos == 0)
+            config_filename = argv[i];
+        else
+            show_error("Incorrect port number");
+        pos++;
+    }
+}
+
 
 const char *recv_error = "Failed to read data";
 const char *send_error = "Failed to write data";
@@ -65,7 +115,8 @@ int main(int argc, char *argv[]) {
     
     printf("InkMonitor v0.01 Alpha 4 - Server\n");
     
-    parse_options(argc, argv);
+    parse_arguments(argc, argv);
+    load_config(config_filename);
     
     screenshot_init();
     printf("    Monitor resolution: %dx%d\n", screen->width, screen->height);
@@ -113,12 +164,14 @@ int main(int argc, char *argv[]) {
     unsigned region_width = client_width / WIDTH_DIV;
     unsigned region_height = client_height / HEIGHT_DIV;
     
-    if (
+    int screen_left = 0;
+    int screen_top = 0;
+    /*if (
         screen_left <= -screen->width || screen_left >= screen->width ||
         screen_top <= -screen->height || screen_top >= screen->height
     )
         show_error("Incorrect position of the left top corner of grabbed part "
-                   "of the screen. Failed to fill reader screen.");
+                   "of the screen. Failed to fill reader screen.");*/
     
     Imlib_Image image = screenshot_get(
         screen_left, screen_top, client_width, client_height
@@ -167,7 +220,7 @@ int main(int argc, char *argv[]) {
         if (sleep_time > 0)
             usleep(sleep_time / NSECS_PER_MSEC);
         else
-        if (stats_file && sleep_time < 0)
+        if (stats_enabled && sleep_time < 0)
             printf("[~] Too slow! Frame duration is %lld ms.\n",
                     frame_duration / NSECS_PER_MSEC);
     }

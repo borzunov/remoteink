@@ -47,8 +47,8 @@ void edit_host_handler() {
 char server_port_buffer[OPTION_SIZE];
 
 #define PORT_MAXLEN 5
-#define PORT_MIN 0
-#define PORT_MAX 65536
+#define PORT_MIN 1
+#define PORT_MAX 49151
 
 void change_port_handler(char *buffer) {
     int incorrect = 0;

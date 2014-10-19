@@ -16,6 +16,7 @@ struct IniParam {
 };
 #define INI_ANY_KEY "*"
 
+#define INI_VALUE_FALSE "False"
 #define INI_VALUE_TRUE "True"
 
 struct IniSection {
@@ -23,10 +24,8 @@ struct IniSection {
     struct IniParam *params;
 };
 
-int load_params(const char *filename, const struct IniSection sections[],
-        int ignore_if_not_exists, void (*error_handler)(const char *message));
-int save_params(const char *filename, const struct IniSection sections[],
-        void (*error_handler)(const char *message));
+int ini_load(const char *filename, const struct IniSection sections[]);
+int ini_save(const char *filename, const struct IniSection sections[]);
 
 
 #endif

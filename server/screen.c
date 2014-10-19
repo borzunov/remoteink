@@ -1,3 +1,5 @@
+#include "../common/exceptions.h"
+#include "../common/messages.h"
 #include "screen.h"
 
 #include <X11/Xutil.h>
@@ -7,6 +9,8 @@ Window root;
 
 void screenshot_init() {
     Display *display = XOpenDisplay(NULL);
+    if (!display)
+        throw_exc(ERR_DISPLAY);
     int screen_no = DefaultScreen(display);
     screen = ScreenOfDisplay(display, screen_no);
 
@@ -21,7 +25,7 @@ void screenshot_init() {
     imlib_context_set_operation(IMLIB_OP_COPY);
 }
 
-inline Imlib_Image screenshot_get(int x, int y, int width, int height) {
+Imlib_Image screenshot_get(int x, int y, int width, int height) {
     return gib_imlib_create_image_from_drawable(root, 0,
             x, y, width, height, 1);
 }

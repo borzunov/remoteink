@@ -1,27 +1,30 @@
 CC=gcc
-CFLAGS=-Wall -O3
+CFLAGS=-std=gnu99 -pedantic -Wall -O3
 
 all: inkmonitor-server
 
-inkmonitor-server: main.o ini_parser.o options.o profiler.o screen.o transfer.o
-	$(CC) $(CFLAGS) -o inkmonitor-server ini_parser.o main.o options.o profiler.o screen.o transfer.o -lgiblib -lImlib2 -lX11
+inkmonitor-server: exceptions.o ini_parser.o main.o options.o profiler.o screen.o transfer.o
+	$(CC) $(CFLAGS) -o inkmonitor-server exceptions.o ini_parser.o main.o options.o profiler.o screen.o transfer.o -lgiblib -lImlib2 -lX11
+
+exceptions.o: ../common/exceptions.c
+	$(CC) $(CFLAGS) -c ../common/exceptions.c
 
 ini_parser.o: ../common/ini_parser.c
 	$(CC) $(CFLAGS) -c ../common/ini_parser.c
 
-main.o: main.c main.h options.h profiler.h screen.h profiler.h
+main.o: main.c
 	$(CC) $(CFLAGS) -c main.c
 
-options.o: options.c main.h options.h
+options.o: options.c
 	$(CC) $(CFLAGS) -c options.c
 
-profiler.o: profiler.c profiler.h
+profiler.o: profiler.c
 	$(CC) $(CFLAGS) -c profiler.c
 
-screen.o: screen.c screen.h
+screen.o: screen.c
 	$(CC) $(CFLAGS) -c screen.c
 	
-transfer.o: transfer.c main.h options.h profiler.h transfer.h
+transfer.o: transfer.c
 	$(CC) $(CFLAGS) -c transfer.c
 
 clean:

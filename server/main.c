@@ -1,5 +1,6 @@
+#include "../common/exceptions.h"
+#include "../common/messages.h"
 #include "../common/protocol.h"
-#include "main.h"
 #include "options.h"
 #include "profiler.h"
 #include "screen.h"
@@ -12,6 +13,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+
+#define ERR_SIGPIPE "Connection closed"
+
+#define ERR_ARG_EXCESS "Excess argument is present"
+
+#define ERR_CLIENT_VERSION "Incompatible client version"
 
 
 #define MAX_FPS 20
@@ -31,6 +39,7 @@ int serv_fd, conn_fd;
 
 
 void exit_handler() {
+    // Handling errors here is redundant because we already have an exception
     close(conn_fd);
     close(serv_fd);
     
@@ -46,12 +55,17 @@ void sigint_handler(int code) {
 }
 
 void sigpipe_handler(int code) {
-    show_error("Connection closed");
+    throw_exc(ERR_SIGPIPE);
 }
 
 
+int in_show_error = 0;
+
 void show_error(const char *error) {
-    exit_handler();
+    if (!in_show_error) {
+        in_show_error = 1;
+        exit_handler();
+    }
     fprintf(stderr, "[-] Error: %s\n", error);
     exit(EXIT_FAILURE);
 }
@@ -96,20 +110,19 @@ void parse_arguments(int argc, char *argv[]) {
         if (pos == 0)
             config_filename = argv[i];
         else
-            show_error("Incorrect port number");
+            throw_exc(ERR_ARG_EXCESS);
         pos++;
     }
 }
 
-
-const char *recv_error = "Failed to read data";
-const char *send_error = "Failed to write data";
 
 #define MIN_FRAME_DURATION ((NSECS_PER_SEC) / (MAX_FPS))
 
 char conn_check_char = CONN_CHECK;
 
 int main(int argc, char *argv[]) {
+    set_except(show_error);
+    
     signal(SIGINT, sigint_handler);
     signal(SIGPIPE, sigpipe_handler);
     
@@ -117,24 +130,25 @@ int main(int argc, char *argv[]) {
     
     parse_arguments(argc, argv);
     load_config(config_filename);
+    printf("    Configuration: %s\n", config_filename);
     
     screenshot_init();
     printf("    Monitor resolution: %dx%d\n", screen->width, screen->height);
         
     serv_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (serv_fd < 0)
-        show_error("Failed to create socket");
+        throw_exc(ERR_SOCK_CREATE);
     
     struct hostent *serv = gethostbyname(server_host);
     if (serv == NULL)
-        show_error("No such host");
+        throw_exc(ERR_SOCK_RESOLVE);
     struct sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
     memcpy(&serv_addr.sin_addr.s_addr, serv->h_addr, serv->h_length);
     serv_addr.sin_port = htons(server_port);
     
     if (bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) < 0)
-        show_error("Failed to bind this port on this host");
+        throw_exc(ERR_SOCK_BIND, server_host, server_port);
 
     listen(serv_fd, 0);
     
@@ -144,16 +158,16 @@ int main(int argc, char *argv[]) {
     
     conn_fd = accept(serv_fd, (struct sockaddr *) &client_addr, &client_len);
     if (conn_fd < 0)
-        show_error("Failed to accept a connection");
+        throw_exc(ERR_SOCK_ACCEPT);
 
     int header_len = strlen(HEADER);
     if (read(conn_fd, buffer, header_len + 1) != header_len + 1 ||
             buffer[header_len] != '\n' || strncmp(buffer, HEADER, header_len))
-        show_error("Incompatible client version");
+        throw_exc(ERR_CLIENT_VERSION);
     printf("[+] Accepted client connection\n");
     
     if (read(conn_fd, buffer, COORD_SIZE * 2) != COORD_SIZE * 2)
-        show_error(recv_error);
+        throw_exc(ERR_SOCK_RECV);
     unsigned client_width, client_height;
     int i = -1;
     READ_COORD(client_width, buffer, i);
@@ -186,7 +200,7 @@ int main(int argc, char *argv[]) {
         
         // Check whether connection is dead. If so, SIGPIPE will be sent.
         if (write(conn_fd, &conn_check_char, sizeof (char)) < 0)
-            show_error(send_error);
+            throw_exc(ERR_SOCK_SEND);
         
         profiler_start(STAGE_SHOT);
         

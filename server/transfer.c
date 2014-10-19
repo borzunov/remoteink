@@ -1,5 +1,6 @@
+#include "../common/exceptions.h"
+#include "../common/messages.h"
 #include "../common/protocol.h"
-#include "main.h"
 #include "options.h"
 #include "profiler.h"
 #include "transfer.h"
@@ -10,7 +11,7 @@ void send_buffer(int conn_fd, const char *buffer, int len) {
     profiler_start(STAGE_TRANSFER);
     
     if (write(conn_fd, buffer, len) < 0)
-        show_error(send_error);
+        throw_exc(ERR_SOCK_SEND);
         
     profiler_finish(STAGE_TRANSFER);
 }
@@ -19,7 +20,7 @@ void wait_confirm(int conn_fd) {
     profiler_start(STAGE_DRAW);
     
     if (read(conn_fd, buffer, 1) != 1 || buffer[0] != RES_CONFIRM)
-        show_error(recv_error);
+        throw_exc(ERR_SOCK_RECV);
     
     profiler_finish(STAGE_DRAW);
 }

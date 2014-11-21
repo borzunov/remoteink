@@ -2,6 +2,7 @@
 #include "../common/ini_parser.h"
 #include "../common/messages.h"
 #include "options.h"
+#include "screen.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -42,6 +43,49 @@ void load_stats_file(const char *key, const char *value) {
 }
 
 
+struct HandlerRecord {
+    const char *key;
+    void (*handler)();
+};
+
+const struct HandlerRecord handlers[] = {
+    {"MoveUp", move_up_handler},
+    {"MoveDown", move_down_handler},
+    {"MoveLeft", move_left_handler},
+    {"MoveRight", move_right_handler},
+    {NULL, NULL}
+};
+
+struct Shortcut shortcuts[BUFFER_SIZE];
+int shortcuts_count = 0;
+
+#define SHORTCUT_VALUE_DISABLED "None"
+
+#define ERR_SHORTCUT_UNKNOWN_ACTION "Unknown action \"%s\" in shortcut \"%s\""
+#define ERR_SHORTCUT_OVERFLOW "You can't define more than %d shortcuts"
+
+void load_shortcut(const char *key, const char *value) {
+    if (!strcmp(value, SHORTCUT_VALUE_DISABLED))
+        return;
+    if (shortcuts_count >= BUFFER_SIZE - 1)
+        throw_exc(ERR_SHORTCUT_OVERFLOW, BUFFER_SIZE - 1);
+    
+    void (*handler)() = NULL;
+    for (int i = 0; handlers[i].key != NULL; i++)
+        if (!strcmp(key, handlers[i].key)) {
+            handler = handlers[i].handler;
+            break;
+        }
+    if (handler == NULL)
+        throw_exc(ERR_SHORTCUT_UNKNOWN_ACTION, key, value);
+    
+    struct Hotkey hotkey = parse_hotkey(value);
+    shortcuts[shortcuts_count].hotkey = hotkey;
+    shortcuts[shortcuts_count].handler = handler;
+    shortcuts_count++;
+}
+
+
 const struct IniSection sections[] = {
     {"Server", (struct IniParam []) {
         {"Host", load_server_host, NULL},
@@ -54,7 +98,7 @@ const struct IniSection sections[] = {
         {NULL, NULL, NULL}
     }},
     {"Shortcuts", (struct IniParam []) {
-        //{"*", load_shortcut, NULL},
+        {"*", load_shortcut, NULL},
         {NULL, NULL}
     }},
     {NULL, NULL}
@@ -63,4 +107,5 @@ const struct IniSection sections[] = {
 
 void load_config(const char *filename) {
     ini_load(filename, sections);
+    shortcuts[shortcuts_count].handler = NULL;
 }

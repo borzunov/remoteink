@@ -1,8 +1,8 @@
 #ifndef MESSAGES_H
 #define MESSAGES_H
 
-#include "ini_parser.h"
 
+#define ERR_THREAD_CREATE "Failed to create thread"
 
 #define ERR_FILE_OPEN_FOR_READING "Can't open file \"%s\" for reading"
 #define ERR_FILE_OPEN_FOR_WRITING "Can't open file \"%s\" for writing"

@@ -4,10 +4,12 @@
 #include "options.h"
 #include "profiler.h"
 #include "screen.h"
+#include "shortcuts.h"
 #include "transfer.h"
 
 #include <netdb.h>
 #include <netinet/in.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -71,6 +73,9 @@ void show_error(const char *error) {
 }
 
 
+const char *config_filename = "inkmonitor-server.ini";
+
+
 void show_version() {
     printf(
         "Server for tool for using E-Ink reader as computer monitor\n"
@@ -86,13 +91,16 @@ void show_help() {
         "    inkmonitor-server [OPTION] [CONFIG]\n"
         "\n"
         "Standard options:\n"
-        "    -h, --help          Display this help and exit.\n"
-        "    --version           Output version info and exit.\n"
+        "    -h, --help    Display this help and exit.\n"
+        "    --version     Output version info and exit.\n"
+        "\n"
+        "Parameters:\n"
+        "    CONFIG        INI configuration file.\n"
+        "                  Default: %s\n",
+        config_filename
     );
 }
 
-
-const char *config_filename = "inkmonitor-server.ini";
 
 void parse_arguments(int argc, char *argv[]) {
     int pos = 0;
@@ -116,6 +124,13 @@ void parse_arguments(int argc, char *argv[]) {
 }
 
 
+Display *display;
+
+void *start_handle_shortcuts(void *arg) {
+    handle_shortcuts(shortcuts);
+    return NULL;
+}
+
 #define MIN_FRAME_DURATION ((NSECS_PER_SEC) / (MAX_FPS))
 
 char conn_check_char = CONN_CHECK;
@@ -129,12 +144,25 @@ int main(int argc, char *argv[]) {
     printf("InkMonitor v0.01 Alpha 4 - Server\n");
     
     parse_arguments(argc, argv);
-    load_config(config_filename);
-    printf("    Configuration: %s\n", config_filename);
     
-    screenshot_init();
-    printf("    Monitor resolution: %dx%d\n", screen->width, screen->height);
-        
+    Screen *screen;
+    Window window;
+    screenshot_init(&screen, &window);
+    shortcuts_init();
+    
+    load_config(config_filename);
+    printf(
+        "    Configuration: %s\n"
+        "    Monitor resolution: %dx%d\n",
+        config_filename, screen->width, screen->height
+    );
+    
+    pthread_t shortcuts_thread;
+    int shortcuts_res;
+    if (pthread_create(&shortcuts_thread, NULL,
+            start_handle_shortcuts, &shortcuts_res))
+        throw_exc(ERR_THREAD_CREATE);
+
     serv_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (serv_fd < 0)
         throw_exc(ERR_SOCK_CREATE);
@@ -178,18 +206,8 @@ int main(int argc, char *argv[]) {
     unsigned region_width = client_width / WIDTH_DIV;
     unsigned region_height = client_height / HEIGHT_DIV;
     
-    int screen_left = 0;
-    int screen_top = 0;
-    /*if (
-        screen_left <= -screen->width || screen_left >= screen->width ||
-        screen_top <= -screen->height || screen_top >= screen->height
-    )
-        show_error("Incorrect position of the left top corner of grabbed part "
-                   "of the screen. Failed to fill reader screen.");*/
-    
-    Imlib_Image image = screenshot_get(
-        screen_left, screen_top, client_width, client_height
-    );
+    Imlib_Image image = screenshot_get(window,
+            screen_left, screen_top, client_width, client_height);
     imlib_context_set_image(image);
     DATA32 *data = imlib_image_get_data_for_reading_only();
     
@@ -204,9 +222,8 @@ int main(int argc, char *argv[]) {
         
         profiler_start(STAGE_SHOT);
         
-        Imlib_Image next_image = screenshot_get(
-            screen_left, screen_top, client_width, client_height
-        );
+        Imlib_Image next_image = screenshot_get(window,
+                screen_left, screen_top, client_width, client_height);
         imlib_context_set_image(next_image);
         DATA32 *next_data = imlib_image_get_data_for_reading_only();
         

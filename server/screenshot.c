@@ -1,6 +1,6 @@
 #include "../common/exceptions.h"
 #include "../common/messages.h"
-#include "screen.h"
+#include "screenshot.h"
 
 
 void screenshot_init(Screen **screen, Window *root) {
@@ -24,26 +24,4 @@ void screenshot_init(Screen **screen, Window *root) {
 Imlib_Image screenshot_get(Window root, int x, int y, int width, int height) {
     return gib_imlib_create_image_from_drawable(root, 0,
             x, y, width, height, 1);
-}
-
-
-int screen_left = 0;
-int screen_top = 0;
-
-#define MOVE_STEP 10
-
-void move_up_handler() {
-    screen_top -= MOVE_STEP;
-}
-
-void move_down_handler() {
-    screen_top += MOVE_STEP;
-}
-
-void move_left_handler() {
-    screen_left -= MOVE_STEP;
-}
-
-void move_right_handler() {
-    screen_left += MOVE_STEP;
 }

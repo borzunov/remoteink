@@ -1,8 +1,8 @@
 #include "../common/exceptions.h"
 #include "../common/ini_parser.h"
 #include "../common/messages.h"
+#include "control.h"
 #include "options.h"
-#include "screen.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -53,6 +53,7 @@ const struct HandlerRecord handlers[] = {
     {"MoveDown", move_down_handler},
     {"MoveLeft", move_left_handler},
     {"MoveRight", move_right_handler},
+    {"ResetPosition", reset_position},
     {NULL, NULL}
 };
 

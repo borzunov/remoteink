@@ -1,9 +1,10 @@
 #include "../common/exceptions.h"
 #include "../common/messages.h"
 #include "../common/protocol.h"
+#include "control.h"
 #include "options.h"
 #include "profiler.h"
-#include "screen.h"
+#include "screenshot.h"
 #include "shortcuts.h"
 #include "transfer.h"
 
@@ -132,10 +133,9 @@ void *start_handle_shortcuts(void *arg) {
 }
 
 
-void send_first_frame(Imlib_Image *image,
-        Window window, int client_width, int client_height, DATA32 **data) {
+void send_first_frame(Imlib_Image *image, Window window, DATA32 **data) {
     *image = screenshot_get(window,
-            screen_left, screen_top, client_width, client_height);
+            frame_left, frame_top, client_width, client_height);
     imlib_context_set_image(*image);
     *data = imlib_image_get_data_for_reading_only();
     
@@ -144,8 +144,7 @@ void send_first_frame(Imlib_Image *image,
 
 char conn_check_char = CONN_CHECK;
 
-void send_next_frame(Imlib_Image *image,
-        Window window, int client_width, int client_height, DATA32 **data,
+void send_next_frame(Imlib_Image *image, Window window, DATA32 **data,
         int region_width, int region_height) {
     // Check whether connection is dead. If so, SIGPIPE will be sent.
     if (write(conn_fd, &conn_check_char, sizeof (char)) < 0)
@@ -153,7 +152,7 @@ void send_next_frame(Imlib_Image *image,
     
     profiler_start(STAGE_SHOT);    
     Imlib_Image next_image = screenshot_get(window,
-            screen_left, screen_top, client_width, client_height);
+            frame_left, frame_top, client_width, client_height);
     imlib_context_set_image(next_image);
     DATA32 *next_data = imlib_image_get_data_for_reading_only();
     profiler_finish(STAGE_SHOT);
@@ -207,27 +206,27 @@ void accept_client() {
         throw_exc(ERR_CLIENT_VERSION);
 }
 
-void perform_handshake(unsigned *client_width, unsigned *client_height) {
+void perform_handshake() {
     if (read(conn_fd, buffer, COORD_SIZE * 2) != COORD_SIZE * 2)
         throw_exc(ERR_SOCK_RECV);
     int i = -1;
-    READ_COORD(*client_width, buffer, i);
-    READ_COORD(*client_height, buffer, i);
+    READ_COORD(client_width, buffer, i);
+    READ_COORD(client_height, buffer, i);
 }
 
 #define MIN_FRAME_DURATION ((NSECS_PER_SEC) / (MAX_FPS))
 
-void perform_mainloop(Window window, int client_width, int client_height) {
+void perform_mainloop(Window window) {
     Imlib_Image image;
     DATA32 *data;
-    send_first_frame(&image, window, client_width, client_height, &data);
+    send_first_frame(&image, window, &data);
     
     unsigned region_width = client_width / WIDTH_DIV;
     unsigned region_height = client_height / HEIGHT_DIV;
     while (1) {
         long long frame_start_time = get_time_nsec();
         
-        send_next_frame(&image, window, client_width, client_height, &data,
+        send_next_frame(&image, window, &data,
                 region_width, region_height);
 
         long long frame_duration = get_time_nsec() - frame_start_time;
@@ -252,13 +251,22 @@ int main(int argc, char *argv[]) {
     Screen *screen;
     Window window;
     screenshot_init(&screen, &window);
+    
+    screen_width = screen->width;
+    screen_height = screen->height;
+    window_left = 0;
+    window_top = 0;
+    window_width = screen_width;
+    window_height = screen_height;
+    reset_position();
+    
     shortcuts_init();
     
     load_config(config_filename);
     printf(
         "    Configuration: %s\n"
         "    Monitor resolution: %dx%d\n",
-        config_filename, screen->width, screen->height
+        config_filename, screen_width, screen_height
     );
     
     pthread_t shortcuts_thread;
@@ -271,10 +279,9 @@ int main(int argc, char *argv[]) {
     printf("[+] Listen on %s:%d\n", server_host, server_port);
     accept_client();
     printf("[+] Accepted client connection\n");
-    unsigned client_width, client_height;
-    perform_handshake(&client_width, &client_height);
+    perform_handshake();
     printf("    Reader resolution: %ux%u\n",
             client_width, client_height);
-    perform_mainloop(window, client_width, client_height);
+    perform_mainloop(window);
     return 0;
 }

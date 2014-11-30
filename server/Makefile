@@ -3,8 +3,11 @@ CFLAGS=-std=gnu99 -pedantic -Wall -O3
 
 all: inkmonitor-server
 
-inkmonitor-server: exceptions.o ini_parser.o main.o options.o profiler.o screen.o shortcuts.o transfer.o
-	$(CC) $(CFLAGS) -o inkmonitor-server exceptions.o ini_parser.o main.o options.o profiler.o screen.o shortcuts.o transfer.o -lgiblib -lImlib2 -lpthread -lX11
+inkmonitor-server: control.o exceptions.o ini_parser.o main.o options.o profiler.o screenshot.o shortcuts.o transfer.o
+	$(CC) $(CFLAGS) -o inkmonitor-server control.o exceptions.o ini_parser.o main.o options.o profiler.o screenshot.o shortcuts.o transfer.o -lgiblib -lImlib2 -lpthread -lX11
+
+control.o: control.c
+	$(CC) $(CFLAGS) -c control.c
 
 exceptions.o: ../common/exceptions.c
 	$(CC) $(CFLAGS) -c ../common/exceptions.c
@@ -21,8 +24,8 @@ options.o: options.c
 profiler.o: profiler.c
 	$(CC) $(CFLAGS) -c profiler.c
 
-screen.o: screen.c
-	$(CC) $(CFLAGS) -c screen.c
+screenshot.o: screenshot.c
+	$(CC) $(CFLAGS) -c screenshot.c
 
 shortcuts.o: shortcuts.c
 	$(CC) $(CFLAGS) -c shortcuts.c

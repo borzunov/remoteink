@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <X11/Xutil.h>
 
 
 Display *display;
@@ -62,6 +63,9 @@ struct Hotkey parse_hotkey(const char *str) {
     return res;
 }
 
+
+// Modifiers that can be set in addition to required
+#define EXTRA_MODIFIERS (LockMask | Mod2Mask | Mod3Mask | Mod4Mask | Mod5Mask)
 
 void grab_key(int keycode, unsigned modifiers,
         Window grab_window, Bool owner_events, int pointer_mode,

@@ -4,7 +4,7 @@
 #include "control.h"
 #include "options.h"
 #include "profiler.h"
-#include "screenshot.h"
+#include "screen.h"
 #include "shortcuts.h"
 #include "transfer.h"
 
@@ -133,9 +133,18 @@ void *start_handle_shortcuts(void *arg) {
 }
 
 
-void send_first_frame(Imlib_Image *image, Window window, DATA32 **data) {
-    *image = screenshot_get(window,
-            frame_left, frame_top, client_width, client_height);
+void track_focused_window() {
+	if (window_tracking_enabled) {
+		activate_window_context(window_get_focused());
+	} else
+		activate_window_context(window_get_root());
+}
+
+void send_first_frame(Imlib_Image *image, DATA32 **data) {
+	track_focused_window();
+    *image = screenshot_get(
+            active_context->frame_left, active_context->frame_top,
+            client_width, client_height);
     imlib_context_set_image(*image);
     *data = imlib_image_get_data_for_reading_only();
     
@@ -144,15 +153,17 @@ void send_first_frame(Imlib_Image *image, Window window, DATA32 **data) {
 
 char conn_check_char = CONN_CHECK;
 
-void send_next_frame(Imlib_Image *image, Window window, DATA32 **data,
+void send_next_frame(Imlib_Image *image, DATA32 **data,
         int region_width, int region_height) {
     // Check whether connection is dead. If so, SIGPIPE will be sent.
     if (write(conn_fd, &conn_check_char, sizeof (char)) < 0)
         throw_exc(ERR_SOCK_SEND);
     
-    profiler_start(STAGE_SHOT);    
-    Imlib_Image next_image = screenshot_get(window,
-            frame_left, frame_top, client_width, client_height);
+    profiler_start(STAGE_SHOT);   
+    track_focused_window(); 
+    Imlib_Image *next_image = screenshot_get(
+            active_context->frame_left, active_context->frame_top,
+            client_width, client_height);
     imlib_context_set_image(next_image);
     DATA32 *next_data = imlib_image_get_data_for_reading_only();
     profiler_finish(STAGE_SHOT);
@@ -216,18 +227,17 @@ void perform_handshake() {
 
 #define MIN_FRAME_DURATION ((NSECS_PER_SEC) / (MAX_FPS))
 
-void perform_mainloop(Window window) {
+void perform_mainloop() {
     Imlib_Image image;
     DATA32 *data;
-    send_first_frame(&image, window, &data);
+    send_first_frame(&image, &data);
     
     unsigned region_width = client_width / WIDTH_DIV;
     unsigned region_height = client_height / HEIGHT_DIV;
     while (1) {
         long long frame_start_time = get_time_nsec();
         
-        send_next_frame(&image, window, &data,
-                region_width, region_height);
+        send_next_frame(&image, &data, region_width, region_height);
 
         long long frame_duration = get_time_nsec() - frame_start_time;
         long long sleep_time = MIN_FRAME_DURATION - frame_duration;
@@ -248,18 +258,7 @@ int main(int argc, char *argv[]) {
     printf("InkMonitor v0.01 Alpha 4 - Server\n");
     parse_arguments(argc, argv);
     
-    Screen *screen;
-    Window window;
-    screenshot_init(&screen, &window);
-    
-    screen_width = screen->width;
-    screen_height = screen->height;
-    window_left = 0;
-    window_top = 0;
-    window_width = screen_width;
-    window_height = screen_height;
-    reset_position();
-    
+    screenshot_init(&screen_width, &screen_height);
     shortcuts_init();
     
     load_config(config_filename);
@@ -282,6 +281,6 @@ int main(int argc, char *argv[]) {
     perform_handshake();
     printf("    Reader resolution: %ux%u\n",
             client_width, client_height);
-    perform_mainloop(window);
+    perform_mainloop();
     return 0;
 }

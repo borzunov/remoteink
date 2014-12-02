@@ -1,9 +1,43 @@
 #include "control.h"
+#include "screen.h"
+
+#include <stdlib.h>
 
 int screen_width, screen_height, client_width, client_height,
 		window_left, window_top, window_width, window_height;
-int frame_left = 0;
-int frame_top = 0;
+
+struct WindowContext *contexts_list = NULL;
+
+struct WindowContext *active_context = NULL;
+int window_tracking_enabled = 1;
+
+void activate_window_context(Window window) {
+    /*window_left = 0;
+    window_top = 0;
+    window_width = screen_width;
+    window_height = screen_height;*/
+	window_get_geometry(window,
+			&window_left, &window_top, &window_width, &window_height);
+    
+	if (active_context != NULL && active_context->window == window)
+		return;
+	struct WindowContext *cur = contexts_list;
+	while (cur != NULL) {
+		if (cur->window == window) {
+			active_context = cur;
+			return;
+		}
+		cur = cur->next;
+	}
+	
+	cur = (struct WindowContext *) malloc(sizeof (struct WindowContext));
+	cur->window = window;
+	cur->next = contexts_list;
+	contexts_list = cur;
+	active_context = cur;
+	
+	reset_position();
+}
 
 
 inline int min(int a, int b) {
@@ -30,9 +64,9 @@ inline int reset_coord(int screen_side, int client_side,
 }
 
 void reset_position() {
-	frame_top = reset_coord(screen_height, client_height,
+	active_context->frame_top = reset_coord(screen_height, client_height,
 			window_top, window_height);
-	frame_left = reset_coord(screen_width, client_width,
+	active_context->frame_left = reset_coord(screen_width, client_width,
 			window_left, window_width);
 }
 
@@ -47,17 +81,21 @@ inline void increase_coord(int *frame_pos, int screen_side, int client_side) {
 }
 
 void move_up_handler() {
-	decrease_coord(&frame_top);
+	decrease_coord(&active_context->frame_top);
 }
 
 void move_down_handler() {
-	increase_coord(&frame_top, screen_height, client_height);
+	increase_coord(&active_context->frame_top, screen_height, client_height);
 }
 
 void move_left_handler() {
-	decrease_coord(&frame_left);
+	decrease_coord(&active_context->frame_left);
 }
 
 void move_right_handler() {
-	increase_coord(&frame_left, screen_width, client_width);
+	increase_coord(&active_context->frame_left, screen_width, client_width);
+}
+
+void toogle_window_tracking_handler() {
+	window_tracking_enabled = !window_tracking_enabled;
 }

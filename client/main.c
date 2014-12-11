@@ -1,18 +1,14 @@
 #include "../common/exceptions.h"
 #include "../common/messages.h"
+#include "../common/utils.h"
 #include "client.h"
 #include "main.h"
 #include "options.h"
 #include "ui.h"
 
-#if defined(__i386__)
-#define OPTIONS_DIR "."
-#else
-#define OPTIONS_DIR GAMEPATH
-#endif
-#define OPTIONS_FILE OPTIONS_DIR "/inkmonitor.ini"
-
 #define TEXT_TITLE "InkMonitor v0.01 Alpha 4"
+
+const char *config_filename;
 
 enum Stage {STAGE_INTRO, STAGE_MONITOR};
 
@@ -34,7 +30,7 @@ short label_y;
 int pointer_need_repaint = 1;
 
 void change_option_handler(char *buffer) {
-	save_config(OPTIONS_FILE);
+	save_config(config_filename);
 	ui_repaint(controls, controls_top);
 }
 
@@ -239,7 +235,8 @@ int main_handler(int type, int par1, int par2) {
 	switch (type) {
 	case EVT_INIT:
 		set_except(NULL);
-		load_config(OPTIONS_FILE);
+		config_filename = get_default_config_path("inkmonitor.ini");
+		load_config(config_filename);
 	
 		screen_width = ScreenWidth();
 		screen_height = ScreenHeight();

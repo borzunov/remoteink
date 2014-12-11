@@ -1,6 +1,7 @@
 #include "../common/exceptions.h"
 #include "../common/messages.h"
 #include "../common/protocol.h"
+#include "../common/utils.h"
 #include "control.h"
 #include "options.h"
 #include "profiler.h"
@@ -74,7 +75,7 @@ void show_error(const char *error) {
 }
 
 
-const char *config_filename = "inkmonitor-server.ini";
+const char *config_filename;
 
 
 void show_version() {
@@ -256,6 +257,8 @@ int main(int argc, char *argv[]) {
 	signal(SIGPIPE, sigpipe_handler);
 	
 	printf("InkMonitor v0.01 Alpha 4 - Server\n");
+	
+	config_filename = get_default_config_path("inkmonitor-server.ini");
 	parse_arguments(argc, argv);
 	
 	screenshot_init(&screen_width, &screen_height);

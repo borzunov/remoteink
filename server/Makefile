@@ -1,4 +1,4 @@
-SOURCES=control.c ../common/exceptions.c ../common/ini_parser.c main.c options.c profiler.c screen.c shortcuts.c transfer.c
+SOURCES=../common/exceptions.c ../common/ini_parser.c ../common/utils.c control.c main.c options.c profiler.c screen.c shortcuts.c transfer.c
 OBJDIR=obj
 OBJECTS=$(addprefix $(OBJDIR)/, $(addsuffix .o, $(notdir $(SOURCES))))
 CONFIG=$(OBJDIR)/inkmonitor-server.ini

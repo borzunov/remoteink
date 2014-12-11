@@ -9,9 +9,9 @@ PROJECT = $(OBJDIR)/$(OUT).app
 LIBS += -linkview
 INCLUDES +=
 CC  = arm-linux-gcc
-CFLAGS += -Os -D__ARM__ -Wall -fomit-frame-pointer
+CFLAGS += -D__ARM__ -fomit-frame-pointer
 CXX = arm-linux-g++
-CXXFLAGS += -Os -D__ARM__ -Wall -fomit-frame-pointer
+CXXFLAGS += -D__ARM__ -fomit-frame-pointer
 LD = arm-linux-g++
 LDFLAGS += -Wl,-s
 endif
@@ -20,9 +20,9 @@ ifeq ($(BUILD), arm_gnueabi)
 PROJECT = $(OBJDIR)/$(OUT).app
 LIBS += -linkview
 CC  = arm-none-linux-gnueabi-gcc
-CFLAGS += -Os -D__ARM__ -Wall -fomit-frame-pointer
+CFLAGS += -D__ARM__ -fomit-frame-pointer
 CXX = arm-none-linux-gnueabi-g++
-CXXFLAGS += -Os -D__ARM__ -Wall -fomit-frame-pointer
+CXXFLAGS += -D__ARM__ -fomit-frame-pointer
 LD = arm-none-linux-gnueabi-g++
 LDFLAGS += -Wl,-s
 endif
@@ -32,9 +32,9 @@ PROJECT = $(OBJDIR)/$(OUT)
 LIBS += -linkview
 INCLUDES +=
 CC  = gcc
-CFLAGS += -D__EMU__ -DIVSAPP -Wall -g -m32
+CFLAGS += -D__EMU__ -DIVSAPP -g -m32
 CXX = g++
-CXXFLAGS += -D__EMU__ -DIVSAPP -Wall -g -m32
+CXXFLAGS += -D__EMU__ -DIVSAPP -g -m32
 LD = g++
 LDFLAGS += -m32
 endif
@@ -43,9 +43,9 @@ ifeq ($(BUILD), std)
 PROJECT = $(OBJDIR)/$(OUT)
 LIBS += -lpthread
 CC  = gcc
-CFLAGS += -Wall -g
+CFLAGS += -g
 CXX = g++
-CXXFLAGS += -Wall -g
+CXXFLAGS += -g
 LD = g++
 endif
 
@@ -57,7 +57,7 @@ ifeq ($(BUILD), emu)
 endif
 	rm -rf $(OBJDIR)*
 
-CDEPS = -MT$@ -MF`echo $@ | sed -e 's,\.o$$,.d,'` -MD -MP
+CDEPS = -MT$@ -MF$(addsuffix .d, $(basename $@)) -MMD -MP
 
 OBJS		= $(addprefix $(OBJDIR)/, $(addsuffix .o, $(notdir $(SOURCES))))
 BITMAP_OBJS = $(addsuffix .c.o, $(addprefix $(OBJDIR)/, $(notdir $(BITMAPS))))

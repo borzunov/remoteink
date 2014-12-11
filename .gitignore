@@ -1,6 +1,4 @@
-*.o
-*.d
-*.log
 client/obj_*
-server/inkmonitor-server
+server/obj
+*.log
 research/

@@ -1,22 +1,34 @@
+SOURCES=control.c ../common/exceptions.c ../common/ini_parser.c main.c options.c profiler.c screen.c shortcuts.c transfer.c
+OBJDIR=obj
+OBJECTS=$(addprefix $(OBJDIR)/, $(addsuffix .o, $(notdir $(SOURCES))))
+CONFIG=$(OBJDIR)/inkmonitor-server.ini
+EXECUTABLE=$(OBJDIR)/inkmonitor-server
+
 CC=gcc
 CFLAGS=-std=gnu99 -pedantic -Wall -O3
-LDFLAGS=-lgiblib -lImlib2 -lpthread -lrt -lX11
-
-SOURCES=control.c ../common/exceptions.c ../common/ini_parser.c main.c options.c profiler.c screen.c shortcuts.c transfer.c
-DEPS=$(SOURCES:.c=.d)
-OBJECTS=$(SOURCES:.c=.o)
-EXECUTABLE=inkmonitor-server
+LDFLAGS=
+LIBS=-lgiblib -lImlib2 -lpthread -lrt -lX11
 
 all: $(EXECUTABLE)
 
-$(EXECUTABLE): $(OBJECTS)
-	$(CC) $^ $(LDFLAGS) -o $@
+$(EXECUTABLE): $(OBJDIR) $(CONFIG) $(OBJECTS)
+	$(CC) -o $@ $(OBJECTS) $(LDFLAGS) $(LIBS)
 
--include $(DEPS)
+$(OBJDIR):
+	mkdir $(OBJDIR)
 
-%.o: %.c
-	$(CC) -MM $(CFLAGS) $< -MF $(patsubst %.o,%.d,$@)
-	$(CC) -c $(CFLAGS) $< -o $@
+$(CONFIG):
+	cp default.ini $(CONFIG)
+
+-include $(OBJDIR)/*.d
+
+CDEPS = -MT$@ -MF$(addsuffix .d, $(basename $@)) -MMD -MP
+
+$(OBJDIR)/%.c.o: %.c
+	$(CC) -c $(CFLAGS) -o $@ $(CDEPS) $<
+
+$(OBJDIR)/%.c.o: ../common/%.c
+	$(CC) -c $(CFLAGS) -o $@ $(CDEPS) $<
 
 clean:
-	rm -f $(DEPS) $(OBJECTS) $(EXECUTABLE)
+	rm -rf $(OBJDIR)

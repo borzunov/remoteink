@@ -4,7 +4,7 @@ CFLAGS=-std=gnu99 -pedantic -Wall -O3
 all: inkmonitor-server
 
 inkmonitor-server: control.o exceptions.o ini_parser.o main.o options.o profiler.o screen.o shortcuts.o transfer.o
-	$(CC) $(CFLAGS) -o inkmonitor-server control.o exceptions.o ini_parser.o main.o options.o profiler.o screen.o shortcuts.o transfer.o -lgiblib -lImlib2 -lpthread -lX11
+	$(CC) $(CFLAGS) -o inkmonitor-server control.o exceptions.o ini_parser.o main.o options.o profiler.o screen.o shortcuts.o transfer.o -lgiblib -lImlib2 -lpthread -lrt -lX11
 
 control.o: control.c
 	$(CC) $(CFLAGS) -c control.c

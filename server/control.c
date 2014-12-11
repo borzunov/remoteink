@@ -12,13 +12,13 @@ struct WindowContext *active_context = NULL;
 int window_tracking_enabled = 1;
 
 void activate_window_context(Window window) {
-    /*window_left = 0;
-    window_top = 0;
-    window_width = screen_width;
-    window_height = screen_height;*/
+	/*window_left = 0;
+	window_top = 0;
+	window_width = screen_width;
+	window_height = screen_height;*/
 	window_get_geometry(window,
 			&window_left, &window_top, &window_width, &window_height);
-    
+	
 	if (active_context != NULL && active_context->window == window)
 		return;
 	struct WindowContext *cur = contexts_list;

@@ -12,7 +12,7 @@ char server_host[BUFFER_SIZE] = "192.168.0.101";
 int server_port = 9312;
 
 void load_server_host(const char *key, const char *value) {
-    strncpy(server_host, value, BUFFER_SIZE);
+	strncpy(server_host, value, BUFFER_SIZE);
 }
 
 const char *save_server_host(const char *key) {
@@ -20,11 +20,11 @@ const char *save_server_host(const char *key) {
 }
 
 void load_server_port(const char *key, const char *value) {
-    if (!(
-        sscanf(value, "%d", &server_port) == 1 &&
-        PORT_MIN <= server_port && server_port <= PORT_MAX
-    ))
-        throw_exc(ERR_INVALID_PORT, PORT_MIN, PORT_MAX);
+	if (!(
+		sscanf(value, "%d", &server_port) == 1 &&
+		PORT_MIN <= server_port && server_port <= PORT_MAX
+	))
+		throw_exc(ERR_INVALID_PORT, PORT_MIN, PORT_MAX);
 }
 
 #define BUFFER_SIZE 256
@@ -37,17 +37,17 @@ const char *save_server_port(const char *key) {
 
 
 const struct IniSection sections[] = {
-    {"Server", (struct IniParam []) {
-        {"Host", load_server_host, save_server_host},
-        {"Port", load_server_port, save_server_port},
-        {NULL, NULL, NULL}
-    }},
-    {NULL, NULL}
+	{"Server", (struct IniParam []) {
+		{"Host", load_server_host, save_server_host},
+		{"Port", load_server_port, save_server_port},
+		{NULL, NULL, NULL}
+	}},
+	{NULL, NULL}
 };
 
 
 void load_config(const char *filename) {
-    ini_load(filename, sections);
+	ini_load(filename, sections);
 }
 
 void save_config(const char *filename) {

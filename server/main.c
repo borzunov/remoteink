@@ -205,7 +205,7 @@ void setup_server() {
 }
 
 void accept_client() {
-    struct sockaddr_in *client_addr;
+    struct sockaddr_in client_addr;
     socklen_t client_len = sizeof (struct sockaddr_in);
     conn_fd = accept(serv_fd, (struct sockaddr *) &client_addr, &client_len);
     if (conn_fd < 0)

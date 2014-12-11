@@ -17,7 +17,7 @@ int conn_fd;
 
 int client_process;
 
-inline void client_send_confirm() {
+void client_send_confirm() {
 	buffer[0] = RES_CONFIRM;
 	if (write(conn_fd, buffer, 1) < 0 && client_process)
 		show_conn_error(send_error);

@@ -40,16 +40,16 @@ void activate_window_context(Window window) {
 }
 
 
-inline int min(int a, int b) {
+int min(int a, int b) {
 	return (a < b) ? a : b;
 }
 
-inline int max(int a, int b) {
+int max(int a, int b) {
 	return (a > b) ? a : b;
 }
 
 
-inline int reset_coord(int screen_side, int client_side,
+int reset_coord(int screen_side, int client_side,
 		int window_pos, int window_side) {
 	if (client_side > screen_side)
 		return -(client_side - screen_side) / 2;
@@ -72,11 +72,11 @@ void reset_position() {
 
 #define MOVE_STEP 10
 
-inline void decrease_coord(int *frame_pos) {
+void decrease_coord(int *frame_pos) {
 	*frame_pos = max(*frame_pos - MOVE_STEP, 0);
 }
 
-inline void increase_coord(int *frame_pos, int screen_side, int client_side) {
+void increase_coord(int *frame_pos, int screen_side, int client_side) {
 	*frame_pos = min(*frame_pos + MOVE_STEP, screen_side - client_side);
 }
 

@@ -100,7 +100,7 @@ void clear_labels() {
 	label_y += font_title->height + LINE_SPACING + PARAGRAPH_EXTRA_SPACING;
 }
 
-inline void add_label(const char *message) {
+void add_label(const char *message) {
 	controls[controls_top++] = ui_label_create(
 		SCREEN_PADDING, screen_width - SCREEN_PADDING, label_y, UI_ALIGN_LEFT,
 		message, font_label, BLACK,
@@ -114,7 +114,7 @@ inline void add_label(const char *message) {
 
 const char *edit_text = "Edit";
 
-inline void add_field(const char *caption, const char *text,
+void add_field(const char *caption, const char *text,
 		void (*edit_handler)()) {
 	SetFont(font_caption, BLACK);
 	int edit_text_width = StringWidth(edit_text);
@@ -212,7 +212,7 @@ void show_error(const char *error) {
 	Message(ICON_ERROR, "Error", error, MESSAGE_MSECS);
 }
 
-inline void show_conn_error(const char *message) {
+void show_conn_error(const char *message) {
 	show_error(message);
 	pthread_exit(NULL);
 }

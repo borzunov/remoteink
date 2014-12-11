@@ -2,12 +2,11 @@
 #define OPTIONS_H
 
 
-void load_options(const char *filename);
-void save_options(const char *filename);
+void load_config(const char *filename);
+void save_config(const char *filename);
 
 
-#define OPTION_SIZE 1024
-extern char server_host[OPTION_SIZE];
+extern char server_host[];
 extern int server_port;
 
 

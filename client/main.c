@@ -1,3 +1,5 @@
+#include "../common/exceptions.h"
+#include "../common/messages.h"
 #include "client.h"
 #include "main.h"
 #include "options.h"
@@ -32,7 +34,7 @@ short label_y;
 int pointer_need_repaint = 1;
 
 void change_option_handler(char *buffer) {
-    save_options(OPTIONS_FILE);
+    save_config(OPTIONS_FILE);
     ui_repaint(controls, controls_top);
 }
 
@@ -44,11 +46,9 @@ void edit_host_handler() {
             KBD_NORMAL, change_option_handler);
 }
 
-char server_port_buffer[OPTION_SIZE];
-
+#define BUFFER_SIZE 256
+char server_port_buffer[BUFFER_SIZE];
 #define PORT_MAXLEN 5
-#define PORT_MIN 1
-#define PORT_MAX 49151
 
 void change_port_handler(char *buffer) {
     int incorrect = 0;
@@ -238,7 +238,8 @@ void stop_monitor_handler() {
 int main_handler(int type, int par1, int par2) {
     switch (type) {
     case EVT_INIT:
-        load_options(OPTIONS_FILE);
+		set_except(NULL);
+        load_config(OPTIONS_FILE);
     
         screen_width = ScreenWidth();
         screen_height = ScreenHeight();

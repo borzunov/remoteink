@@ -105,7 +105,7 @@ int ini_load(const char *filename, const struct IniSection sections[]) {
 }
 
 int ini_save(const char *filename, const struct IniSection sections[]) {
-    f = fopen(filename, "r");
+    f = fopen(filename, "w");
     if (f == NULL) {
         throw_exc(ERR_FILE_OPEN_FOR_WRITING, filename);
         return 0;

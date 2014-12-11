@@ -1,64 +1,55 @@
+#include "../common/exceptions.h"
+#include "../common/ini_parser.h"
+#include "../common/messages.h"
 #include "options.h"
 
 #include <stdio.h>
 #include <string.h>
 
-char server_host[OPTION_SIZE];
+
+#define BUFFER_SIZE 256
+char server_host[BUFFER_SIZE] = "192.168.0.101";
 int server_port = 9312;
 
-void load_options(const char *filename) {
-    // Set defaults
-    strcpy(server_host, "192.168.0.101");
-    
-    FILE *f = fopen(filename, "r");
-    if (f == NULL)
-        return;
-    
-    enum {SECTION_UNKNOWN, SECTION_SERVER} section = SECTION_UNKNOWN;
-    static char buffer[OPTION_SIZE];
-    while (fgets(buffer, OPTION_SIZE, f)) {
-        int buffer_len = strlen(buffer);
-        while (buffer_len && (
-            buffer[buffer_len - 1] == ' ' ||
-            buffer[buffer_len - 1] == '\n'
-        ))
-            buffer_len--;
-        if (!buffer_len)
-            continue;
-        buffer[buffer_len] = 0;
-        
-        static char key[OPTION_SIZE], value[OPTION_SIZE];
-        if (buffer[0] == '[' && buffer[buffer_len - 1] == ']') {
-            buffer[buffer_len - 1] = 0;
-            
-            if (!strcmp(buffer + 1, "Server"))
-                section = SECTION_SERVER;
-            else
-                section = SECTION_UNKNOWN;
-        } else
-        if (sscanf(buffer, "%s = %s", key, value) == 2) {
-            if (section == SECTION_SERVER) {
-                if (!strcmp(key, "Host"))
-                    strcpy(server_host, value);
-                else
-                if (!strcmp(key, "Port"))
-                    sscanf(value, "%d", &server_port);
-            }
-        }
-    }
-    
-    fclose(f);
+void load_server_host(const char *key, const char *value) {
+    strncpy(server_host, value, BUFFER_SIZE);
 }
 
-void save_options(const char *filename) {
-    FILE *f = fopen(filename, "w");
-    if (f == NULL)
-        return;
+const char *save_server_host(const char *key) {
+	return server_host;
+}
 
-    fprintf(f,
-        "[Server]\n"
-        "Host = %s\n"
-        "Port = %d\n",
-    server_host, server_port);
-    fclose(f);
+void load_server_port(const char *key, const char *value) {
+    if (!(
+        sscanf(value, "%d", &server_port) == 1 &&
+        PORT_MIN <= server_port && server_port <= PORT_MAX
+    ))
+        throw_exc(ERR_INVALID_PORT, PORT_MIN, PORT_MAX);
+}
+
+#define BUFFER_SIZE 256
+char server_port_buffer[BUFFER_SIZE];
+
+const char *save_server_port(const char *key) {
+	snprintf(server_port_buffer, BUFFER_SIZE, "%d", server_port);
+	return server_port_buffer;
+}
+
+
+const struct IniSection sections[] = {
+    {"Server", (struct IniParam []) {
+        {"Host", load_server_host, save_server_host},
+        {"Port", load_server_port, save_server_port},
+        {NULL, NULL, NULL}
+    }},
+    {NULL, NULL}
+};
+
+
+void load_config(const char *filename) {
+    ini_load(filename, sections);
+}
+
+void save_config(const char *filename) {
+	ini_save(filename, sections);
 }

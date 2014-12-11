@@ -34,5 +34,6 @@ void throw_exc(const char* format, ...) {
     
     while (finally_handlers_top)
         pop_finally();
-    except_handler(message_buffer);
+    if (except_handler != NULL)
+		except_handler(message_buffer);
 }

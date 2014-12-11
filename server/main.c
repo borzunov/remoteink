@@ -90,15 +90,15 @@ void show_help() {
 	printf(
 		"\n"
 		"Usage:\n"
-		"	inkmonitor-server [OPTION] [CONFIG]\n"
+		"    inkmonitor-server [OPTION] [CONFIG]\n"
 		"\n"
 		"Standard options:\n"
-		"	-h, --help	Display this help and exit.\n"
-		"	--version	 Output version info and exit.\n"
+		"    -h, --help    Display this help and exit.\n"
+		"    --version     Output version info and exit.\n"
 		"\n"
 		"Parameters:\n"
-		"	CONFIG		INI configuration file.\n"
-		"				  Default: %s\n",
+		"    CONFIG        INI configuration file.\n"
+		"                  Default: %s\n",
 		config_filename
 	);
 }
@@ -266,8 +266,8 @@ int main(int argc, char *argv[]) {
 	
 	load_config(config_filename);
 	printf(
-		"	Configuration: %s\n"
-		"	Monitor resolution: %dx%d\n",
+		"    Configuration: %s\n"
+		"    Monitor resolution: %dx%d\n",
 		config_filename, screen_width, screen_height
 	);
 	
@@ -282,7 +282,7 @@ int main(int argc, char *argv[]) {
 	accept_client();
 	printf("[+] Accepted client connection\n");
 	perform_handshake();
-	printf("	Reader resolution: %ux%u\n",
+	printf("    Reader resolution: %ux%u\n",
 			client_width, client_height);
 	perform_mainloop();
 	return 0;

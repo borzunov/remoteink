@@ -168,7 +168,7 @@ void show_intro() {
 	add_label("Copyright (c) 2013-2014 Alexander Borzunov");
 	label_y += PARAGRAPH_EXTRA_SPACING * 2;
 	
-	add_label("	Controls");
+	add_label("    Controls");
 	label_y += PARAGRAPH_EXTRA_SPACING;
 	SetFont(font_caption, BLACK);
 	int left = SCREEN_PADDING;
@@ -192,7 +192,7 @@ void show_intro() {
 	// Another button
 	label_y += PARAGRAPH_EXTRA_SPACING;
 	
-	add_label("	Settings");
+	add_label("    Settings");
 	label_y += PARAGRAPH_EXTRA_SPACING;
 	add_field("Host:", server_host, edit_host_handler);
 	sprintf(server_port_buffer, "%d", server_port);

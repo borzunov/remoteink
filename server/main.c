@@ -36,39 +36,13 @@
 #define WIDTH_DIV 1
 #define HEIGHT_DIV 3
 
-int has_stats = 0;
 
-
-int serv_fd, conn_fd;
-
-
-void exit_handler() {
-	// Handling errors here is redundant because we already have an exception
-	close(conn_fd);
-	close(serv_fd);
-	
-	if (has_stats && stats_enabled && !profiler_save(stats_filename))
-		printf("[*] Stats saved to \"%s\"\n", stats_filename);
-}
-
-void sigint_handler(int code) {
-	exit_handler();
-	exit(EXIT_SUCCESS);
-}
-
-int in_show_error = 0;
-
-void show_error(const char *error) {
-	if (!in_show_error) {
-		in_show_error = 1;
-		exit_handler();
-	}
-	fprintf(stderr, "[-] Error: %s\n", error);
-	exit(EXIT_FAILURE);
-}
-
-void sigpipe_handler(int code) {
-	show_error(ERR_SIGPIPE);
+void show_error(const char *error, int is_fatal) {
+	if (is_fatal) {
+		fprintf(stderr, "[-] Fatal Error: %s\n", error);
+		exit(EXIT_FAILURE);
+	} else
+		fprintf(stderr, "[-] Error: %s\n", error);
 }
 
 
@@ -141,6 +115,12 @@ void track_focused_window() {
 		activate_window_context(window_get_root());
 }
 
+
+int serv_fd, conn_fd;
+
+
+int has_stats = 0;
+
 ExcCode send_first_frame(Imlib_Image *image, DATA32 **data) {
 	track_focused_window();
 	*image = screenshot_get(
@@ -188,41 +168,26 @@ ExcCode send_next_frame(Imlib_Image *image, DATA32 **data,
 	return 0;
 }
 
-ExcCode setup_server() {	
-	serv_fd = socket(AF_INET, SOCK_STREAM, 0);
-	if (serv_fd < 0)
-		THROW(ERR_SOCK_CREATE);
 
-	struct hostent *serv = gethostbyname(server_host);
-	if (serv == NULL)
-		THROW(ERR_SOCK_RESOLVE, server_host);
-	struct sockaddr_in serv_addr;
-	serv_addr.sin_family = AF_INET;
-	memcpy(&serv_addr.sin_addr.s_addr, serv->h_addr, serv->h_length);
-	serv_addr.sin_port = htons(server_port);
-	
-	if (bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) < 0)
-		THROW(ERR_SOCK_BIND, server_host, server_port);
+int handle_client_flag = 0;
 
-	listen(serv_fd, 0);
-	return 0;
-}
-
-ExcCode accept_client() {
+ExcCode client_accept() {
 	struct sockaddr_in client_addr;
 	socklen_t client_len = sizeof (struct sockaddr_in);
 	conn_fd = accept(serv_fd, (struct sockaddr *) &client_addr, &client_len);
 	if (conn_fd < 0)
 		THROW(ERR_SOCK_ACCEPT);
+		
+	handle_client_flag = 1;
+	return 0;
+}
 
+ExcCode client_handshake() {
 	int header_len = strlen(HEADER);
 	if (read(conn_fd, buffer, header_len + 1) != header_len + 1 ||
 			buffer[header_len] != '\n' || strncmp(buffer, HEADER, header_len))
 		THROW(ERR_CLIENT_VERSION);
-	return 0;
-}
-
-ExcCode perform_handshake() {
+		
 	if (read(conn_fd, buffer, COORD_SIZE * 2) != COORD_SIZE * 2)
 		THROW(ERR_SOCK_READ);
 	int i = -1;
@@ -233,14 +198,14 @@ ExcCode perform_handshake() {
 
 #define MIN_FRAME_DURATION ((NSECS_PER_SEC) / (MAX_FPS))
 
-ExcCode perform_mainloop() {
+ExcCode client_mainloop() {
 	Imlib_Image image;
 	DATA32 *data;
 	TRY(send_first_frame(&image, &data));
 	
 	unsigned region_width = client_width / WIDTH_DIV;
 	unsigned region_height = client_height / HEIGHT_DIV;
-	while (1) {
+	while (handle_client_flag) {
 		long long frame_start_time = get_time_nsec();
 		
 		TRY(send_next_frame(&image, &data, region_width, region_height));
@@ -256,6 +221,61 @@ ExcCode perform_mainloop() {
 	}
 	return 0;
 }
+
+void client_disconnect() {
+	handle_client_flag = 0;
+}
+
+
+ExcCode server_create() {
+	serv_fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (serv_fd < 0)
+		THROW(ERR_SOCK_CREATE);
+	return 0;
+}
+
+ExcCode server_setup() {
+	struct hostent *serv = gethostbyname(server_host);
+	if (serv == NULL)
+		THROW(ERR_SOCK_RESOLVE, server_host);
+	struct sockaddr_in serv_addr;
+	serv_addr.sin_family = AF_INET;
+	memcpy(&serv_addr.sin_addr.s_addr, serv->h_addr, serv->h_length);
+	serv_addr.sin_port = htons(server_port);
+	
+	if (bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) < 0)
+		THROW(ERR_SOCK_BIND, server_host, server_port);
+
+	listen(serv_fd, 0);
+	return 0;
+}
+
+ExcCode server_handle_client() {
+	TRY(client_accept());
+	
+	#undef FINALLY
+	#define FINALLY {\
+		close(conn_fd);\
+		handle_client_flag = 0;\
+	}
+	
+	printf("[+] Accepted client connection\n");
+	TRY(client_handshake());
+	printf("    Reader resolution: %ux%u\n", client_width, client_height);
+	TRY(client_mainloop());
+	
+	FINALLY;
+	#undef FINALLY
+	#define FINALLY
+	return 0;
+}
+
+void server_shutdown() {
+	close(serv_fd);
+	if (has_stats && stats_enabled && !profiler_save(stats_filename))
+		printf("[*] Stats saved to \"%s\"\n", stats_filename);
+}
+
 
 ExcCode serve(int argc, char *argv[]) {
 	printf("InkMonitor v0.01 Alpha 4 - Server\n");
@@ -280,14 +300,41 @@ ExcCode serve(int argc, char *argv[]) {
 			start_handle_shortcuts, &shortcuts_res))
 		THROW(ERR_THREAD_CREATE);
 	
-	TRY(setup_server());
+	TRY(server_create());
+	
+	#undef FINALLY
+	#define FINALLY server_shutdown();
+	
+	TRY(server_setup());
 	printf("[+] Listen on %s:%d\n", server_host, server_port);
-	TRY(accept_client());
-	printf("[+] Accepted client connection\n");
-	TRY(perform_handshake());
-	printf("    Reader resolution: %ux%u\n", client_width, client_height);
-	TRY(perform_mainloop());
+	while (1)
+		if (server_handle_client())
+			show_error(exc_message, 0);
+	
+	FINALLY;
+	#undef FINALLY
+	#define FINALLY
 	return 0;
+}
+
+void sigint_handler(int code) {
+	if (handle_client_flag) {
+		client_disconnect();
+		printf("[*] Client disconnected\n");
+	} else {
+		server_shutdown();
+		exit(EXIT_SUCCESS);
+	}
+}
+
+void sigpipe_handler(int code) {
+	if (handle_client_flag) {
+		client_disconnect();
+		show_error(ERR_SIGPIPE, 0);
+	} else {
+		server_shutdown();
+		show_error(ERR_SIGPIPE, 1);
+	}
 }
 
 int main(int argc, char *argv[]) {
@@ -295,6 +342,6 @@ int main(int argc, char *argv[]) {
 	signal(SIGPIPE, sigpipe_handler);
 	
 	if (serve(argc, argv))
-		show_error(exc_message);
+		show_error(exc_message, 1);
 	return 0;
 }

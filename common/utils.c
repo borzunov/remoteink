@@ -4,33 +4,33 @@
 #include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 
-#define BUFFER_SIZE 256
-char executable_dirname_buffer[BUFFER_SIZE];
-
 #define EXECUTABLE_SYMLINK "/proc/self/exe"
 
-const char *get_executable_dirname() {
-	int len = readlink(EXECUTABLE_SYMLINK, executable_dirname_buffer,
-			BUFFER_SIZE - 1);
-	if (len == -1) {
-		throw_exc("Failed to retreive the application directory: "
+ExcCode get_executable_dirname(char *buffer, int buffer_size) {
+	int path_len = readlink(EXECUTABLE_SYMLINK, buffer, buffer_size - 1);
+	if (path_len == -1)
+		THROW("Failed to retreive the application directory: "
 				"Can't resolve \"" EXECUTABLE_SYMLINK "\"");
-		return NULL;
-	}
-	executable_dirname_buffer[len] = '\0';
-	return dirname(executable_dirname_buffer);
+	buffer[path_len] = '\0';
+	
+	const char *res = dirname(buffer);
+	int dirname_len = strlen(res);
+	if (dirname_len > buffer_size - 1)
+		dirname_len = buffer_size - 1;
+	memmove(buffer, res, dirname_len);
+	buffer[dirname_len] = '\0';
+	return 0;
 }
 
-#define BUFFER_SIZE 256
-char config_path_buffer[BUFFER_SIZE];
-
-const char *get_default_config_path(const char *name) {
-	const char *directory = get_executable_dirname();
-	if (directory == NULL)
-		return name;
-	snprintf(config_path_buffer, BUFFER_SIZE, "%s/%s", directory, name);
-	return config_path_buffer;
+void get_default_config_path(const char *name, char *buffer, int buffer_size) {
+	if (get_executable_dirname(buffer, buffer_size)) {
+		strncpy(buffer, name, buffer_size);
+		return;
+	}
+	int directory_len = strlen(buffer);
+	snprintf(buffer + directory_len, buffer_size - directory_len, "/%s", name);
 }

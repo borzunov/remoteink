@@ -40,7 +40,7 @@ extern long long traffic_diffs, traffic_uncompressed;
 extern void profiler_start(int stage);
 extern void profiler_finish(int stage);
 
-extern void profiler_save(const char *filename);
+extern ExcCode profiler_save(const char *filename);
 
 
 #endif

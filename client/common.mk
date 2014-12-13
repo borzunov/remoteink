@@ -9,9 +9,9 @@ PROJECT = $(OBJDIR)/$(OUT).app
 LIBS += -linkview
 INCLUDES +=
 CC  = arm-linux-gcc
-CFLAGS += -D__ARM__ -fomit-frame-pointer
+CFLAGS += -O3 -D__ARM__ -fomit-frame-pointer
 CXX = arm-linux-g++
-CXXFLAGS += -D__ARM__ -fomit-frame-pointer
+CXXFLAGS += -O3 -D__ARM__ -fomit-frame-pointer
 LD = arm-linux-g++
 LDFLAGS += -Wl,-s
 endif
@@ -20,9 +20,9 @@ ifeq ($(BUILD), arm_gnueabi)
 PROJECT = $(OBJDIR)/$(OUT).app
 LIBS += -linkview
 CC  = arm-none-linux-gnueabi-gcc
-CFLAGS += -D__ARM__ -fomit-frame-pointer
+CFLAGS += -O3 -D__ARM__ -fomit-frame-pointer
 CXX = arm-none-linux-gnueabi-g++
-CXXFLAGS += -D__ARM__ -fomit-frame-pointer
+CXXFLAGS += -O3 -D__ARM__ -fomit-frame-pointer
 LD = arm-none-linux-gnueabi-g++
 LDFLAGS += -Wl,-s
 endif
@@ -32,9 +32,9 @@ PROJECT = $(OBJDIR)/$(OUT)
 LIBS += -linkview
 INCLUDES +=
 CC  = gcc
-CFLAGS += -D__EMU__ -DIVSAPP -g -m32
+CFLAGS += -O0 -D__EMU__ -DIVSAPP -g -m32
 CXX = g++
-CXXFLAGS += -D__EMU__ -DIVSAPP -g -m32
+CXXFLAGS += -O0 -D__EMU__ -DIVSAPP -g -m32
 LD = g++
 LDFLAGS += -m32
 endif
@@ -43,9 +43,9 @@ ifeq ($(BUILD), std)
 PROJECT = $(OBJDIR)/$(OUT)
 LIBS += -lpthread
 CC  = gcc
-CFLAGS += -g
+CFLAGS += -O0 -g
 CXX = g++
-CXXFLAGS += -g
+CXXFLAGS += -O0 -g
 LD = g++
 endif
 

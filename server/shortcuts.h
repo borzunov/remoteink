@@ -2,7 +2,7 @@
 #define HOTKEYS_H
 
 
-void shortcuts_init();
+ExcCode shortcuts_init();
 
 
 struct Hotkey {
@@ -10,7 +10,7 @@ struct Hotkey {
 	unsigned modifiers;
 };
 
-struct Hotkey parse_hotkey(const char *str);
+ExcCode parse_hotkey(const char *str, struct Hotkey *res);
 
 struct Shortcut {
 	struct Hotkey hotkey;

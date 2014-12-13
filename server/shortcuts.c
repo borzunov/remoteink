@@ -9,10 +9,11 @@
 
 Display *display;
 
-void shortcuts_init() {
+ExcCode shortcuts_init() {
 	display = XOpenDisplay(NULL);
 	if (!display)
-		throw_exc(ERR_DISPLAY);
+		THROW(ERR_DISPLAY);
+	return 0;
 }
 
 
@@ -36,10 +37,9 @@ struct ModifierRecord modifier_records[] = {
 #define ERR_SHORTCUT_UNKNOWN_MODIFIER "Unknown modifier in shortcut \"%s\""
 #define ERR_SHORTCUT_UNKNOWN_KEY "Unknown key \"%s\" in shortcut \"%s\""
 
-struct Hotkey parse_hotkey(const char *str) {
+ExcCode parse_hotkey(const char *str, struct Hotkey *res) {
 	int word_begin = 0;
-	struct Hotkey res;
-	res.modifiers = 0;
+	res->modifiers = 0;
 	int i;
 	for (i = 0; str[i]; i++)
 		if (str[i] == '+') {
@@ -49,18 +49,19 @@ struct Hotkey parse_hotkey(const char *str) {
 				if (!strncmp(str + word_begin, modifier_records[j].title,
 						i - word_begin)) {
 					modifier_found = 1;
-					res.modifiers |= modifier_records[j].value;
+					res->modifiers |= modifier_records[j].value;
 					break;
 				}
 			if (!modifier_found)
-				throw_exc(ERR_SHORTCUT_UNKNOWN_MODIFIER, str);
+				THROW(ERR_SHORTCUT_UNKNOWN_MODIFIER, str);
 			word_begin = i + 1;
 		}
 		
-	res.keycode = XKeysymToKeycode(display, XStringToKeysym(str + word_begin));
-	if (res.keycode == NoSymbol)
-		throw_exc(ERR_SHORTCUT_UNKNOWN_KEY, str + word_begin, str);
-	return res;
+	res->keycode = XKeysymToKeycode(
+			display, XStringToKeysym(str + word_begin));
+	if (res->keycode == NoSymbol)
+		THROW(ERR_SHORTCUT_UNKNOWN_KEY, str + word_begin, str);
+	return 0;
 }
 
 

@@ -37,19 +37,14 @@ void profiler_finish(int stage) {
 	stages_calls[stage]++;
 }
 
-FILE *f;
-
-void profiler_close_file() {
-	fclose(f);
-}
-
 #define BYTES_PER_MB (1024LL * 1024)
 
-void profiler_save(const char *filename) {
-	f = fopen(filename, "w");
+ExcCode profiler_save(const char *filename) {
+	FILE *f = fopen(filename, "w");
 	if (f == NULL)
-		throw_exc(ERR_FILE_OPEN_FOR_WRITING, filename);
-	push_finally(profiler_close_file);
+		THROW(ERR_FILE_OPEN_FOR_WRITING, filename);
+	#undef FINALLY
+	#define FINALLY fclose(f);
 	
 	if (fprintf(f,
 		"Diffs Traffic:\n"
@@ -63,7 +58,7 @@ void profiler_save(const char *filename) {
 		(double) traffic_uncompressed / BYTES_PER_MB,
 		(double) traffic_diffs / traffic_uncompressed * 100.0
 	) < 0)
-		throw_exc(ERR_FILE_WRITE, filename);
+		THROW(ERR_FILE_WRITE, filename);
 	
 	int i;
 	for (i = 0; i < STAGES_COUNT; i++) {
@@ -80,8 +75,11 @@ void profiler_save(const char *filename) {
 			(double) stages_min[i] / NSECS_PER_MSEC,
 					(double) stages_max[i] / NSECS_PER_MSEC
 		) < 0)
-			throw_exc(ERR_FILE_WRITE, filename);
+			THROW(ERR_FILE_WRITE, filename);
 	}
 	
-	pop_finally();
+	FINALLY;
+	#undef FINALLY
+	#define FINALLY
+	return 0;
 }

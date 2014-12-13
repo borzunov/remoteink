@@ -2,12 +2,23 @@
 #define EXCEPTIONS_H
 
 
-void set_except(void (*handler)(const char *message));
+#define EXC_MESSAGE_SIZE 256
+extern char exc_message[EXC_MESSAGE_SIZE];
 
-void push_finally(void (*handler)());
-void pop_finally();
+typedef int ExcCode;
 
-void throw_exc(const char* format, ...);
+#define TRY(expr) if (expr) {\
+	FINALLY;\
+	return -1;\
+}
+
+#define THROW(...) {\
+	snprintf(exc_message, EXC_MESSAGE_SIZE, __VA_ARGS__);\
+	FINALLY;\
+	return -1;\
+}
+
+#define FINALLY
 
 
 #endif

@@ -7,25 +7,27 @@
 
 char buffer[BUFFER_SIZE];
 
-void send_buffer(int conn_fd, const char *buffer, int len) {
+ExcCode send_buffer(int conn_fd, const char *buffer, int len) {
 	profiler_start(STAGE_TRANSFER);
 	
 	if (write(conn_fd, buffer, len) < 0)
-		throw_exc(ERR_SOCK_SEND);
+		THROW(ERR_SOCK_SEND);
 		
 	profiler_finish(STAGE_TRANSFER);
+	return 0;
 }
 
-void wait_confirm(int conn_fd) {
+ExcCode wait_confirm(int conn_fd) {
 	profiler_start(STAGE_DRAW);
 	
 	if (read(conn_fd, buffer, 1) != 1 || buffer[0] != RES_CONFIRM)
-		throw_exc(ERR_SOCK_RECV);
+		THROW(ERR_SOCK_RECV);
 	
 	profiler_finish(STAGE_DRAW);
+	return 0;
 }
 
-void image_send_all(
+ExcCode image_send_all(
 	int conn_fd, const DATA32 *image, unsigned width, unsigned height
 ) {
 	unsigned x, y;
@@ -44,13 +46,14 @@ void image_send_all(
 
 	buffer[i++] = CMD_SOFT_UPDATE;
 	
-	send_buffer(conn_fd, buffer, i);
-	wait_confirm(conn_fd);
+	TRY(send_buffer(conn_fd, buffer, i));
+	TRY(wait_confirm(conn_fd));
+	return 0;
 }
 
 unsigned color = 0;
 
-void image_send_diff(
+ExcCode image_send_diff(
 	int conn_fd, const DATA32 *prev_image, const DATA32 *next_image,
 	unsigned client_width, unsigned client_height,
 	unsigned region_left, unsigned region_top,
@@ -148,7 +151,8 @@ void image_send_diff(
 	profiler_finish(STAGE_DIFF);
 		
 	if (need_send) {
-		send_buffer(conn_fd, buffer, i);
-		wait_confirm(conn_fd);
+		TRY(send_buffer(conn_fd, buffer, i));
+		TRY(wait_confirm(conn_fd));
 	}
+	return 0;
 }

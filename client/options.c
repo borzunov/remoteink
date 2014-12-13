@@ -1,4 +1,3 @@
-#include "../common/exceptions.h"
 #include "../common/ini_parser.h"
 #include "../common/messages.h"
 #include "options.h"
@@ -11,28 +10,49 @@
 char server_host[BUFFER_SIZE] = "192.168.0.101";
 int server_port = 9312;
 
-void load_server_host(const char *key, const char *value) {
+ExcCode load_server_host(const char *key, const char *value) {
 	strncpy(server_host, value, BUFFER_SIZE);
+	return 0;
 }
 
-const char *save_server_host(const char *key) {
-	return server_host;
+ExcCode save_server_host(const char *key, char *buffer, int buffer_size) {
+	strncpy(buffer, server_host, buffer_size);
+	return 0;
 }
 
-void load_server_port(const char *key, const char *value) {
+ExcCode load_server_port(const char *key, const char *value) {
 	if (!(
 		sscanf(value, "%d", &server_port) == 1 &&
 		PORT_MIN <= server_port && server_port <= PORT_MAX
 	))
-		throw_exc(ERR_INVALID_PORT, PORT_MIN, PORT_MAX);
+		THROW(ERR_INVALID_PORT, PORT_MIN, PORT_MAX);
+	return 0;
 }
 
-#define BUFFER_SIZE 256
-char server_port_buffer[BUFFER_SIZE];
+ExcCode save_server_port(const char *key, char *buffer, int buffer_size) {
+	snprintf(buffer, buffer_size, "%d", server_port);
+	return 0;
+}
 
-const char *save_server_port(const char *key) {
-	snprintf(server_port_buffer, BUFFER_SIZE, "%d", server_port);
-	return server_port_buffer;
+
+int orientation = 0;
+
+const char *orientation_captions[] = {"Portrait", "Landscape"};
+
+#define ERR_INCORRECT_ORIENTATION "Incorrect orientation type"
+
+ExcCode load_orientation(const char *key, const char *value) {
+	for (int i = 0; i < 2; i++)
+		if (!strcmp(value, orientation_captions[i])) {
+			orientation = i;
+			return 0;
+		}
+	THROW(ERR_INCORRECT_ORIENTATION);
+}
+
+ExcCode save_orientation(const char *key, char *buffer, int buffer_size) {
+	strncpy(buffer, orientation_captions[orientation], buffer_size);
+	return 0;
 }
 
 
@@ -42,14 +62,20 @@ const struct IniSection sections[] = {
 		{"Port", load_server_port, save_server_port},
 		{NULL, NULL, NULL}
 	}},
+	{"Client", (struct IniParam []) {
+		{"Orientation", load_orientation, save_orientation},
+		{NULL, NULL, NULL}
+	}},
 	{NULL, NULL}
 };
 
 
-void load_config(const char *filename) {
-	ini_load(filename, sections);
+ExcCode load_config(const char *filename) {
+	TRY(ini_load(filename, sections));
+	return 0;
 }
 
-void save_config(const char *filename) {
-	ini_save(filename, sections);
+ExcCode save_config(const char *filename) {
+	TRY(ini_save(filename, sections));
+	return 0;
 }

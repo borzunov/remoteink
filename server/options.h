@@ -1,6 +1,7 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
 
+#include "../common/exceptions.h"
 #include "shortcuts.h"
 
 
@@ -13,7 +14,7 @@ extern char stats_file[];
 extern struct Shortcut shortcuts[];
 
 
-void load_config(const char *filename);
+ExcCode load_config(const char *filename);
 
 
 #endif

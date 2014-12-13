@@ -15,25 +15,16 @@ before section definition at \"%s\""
 #define LINE_BUFFER_SIZE 256
 char line_buffer[LINE_BUFFER_SIZE];
 
-FILE *f;
-
-void ini_close_file() {
-	fclose(f);
-}
-
-int ini_load(const char *filename, const struct IniSection sections[]) {
-	f = fopen(filename, "r");
-	if (f == NULL) {
-		throw_exc(ERR_FILE_OPEN_FOR_READING, filename);
-		return 0;
-	}
-	push_finally(ini_close_file);
+ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
+	FILE *f = fopen(filename, "r");
+	if (f == NULL)
+		THROW(ERR_FILE_OPEN_FOR_READING, filename);
+	#undef FINALLY
+	#define FINALLY fclose(f);
 	const struct IniSection *cur_section = NULL;
 	while (fgets(line_buffer, LINE_BUFFER_SIZE, f)) {
-		if (ferror(f)) {
-			throw_exc(ERR_FILE_READ, filename);
-			return 0;
-		}
+		if (ferror(f))
+			THROW(ERR_FILE_READ, filename);
 		
 		int len = strlen(line_buffer);
 		if (line_buffer[len - 1] == '\n')
@@ -54,10 +45,8 @@ int ini_load(const char *filename, const struct IniSection sections[]) {
 					cur_section = &sections[i];
 					break;
 				}
-			if (cur_section == NULL) {
-				throw_exc(ERR_INI_UNKNOWN_SECTION, line_buffer + 1, filename);
-				return 0;
-			}
+			if (cur_section == NULL)
+				THROW(ERR_INI_UNKNOWN_SECTION, line_buffer + 1, filename);
 			continue;
 		}
 		
@@ -70,11 +59,8 @@ int ini_load(const char *filename, const struct IniSection sections[]) {
 			) {
 				line_buffer[i] = 0;
 				
-				if (cur_section == NULL) {
-					throw_exc(ERR_INI_PARAM_BEFORE_SECTION,
-							line_buffer, filename);
-					return 0;
-				}
+				if (cur_section == NULL)
+					THROW(ERR_INI_PARAM_BEFORE_SECTION, line_buffer, filename);
 				
 				int j;
 				for (j = 0; cur_section->params[j].key != NULL; j++) {
@@ -82,58 +68,54 @@ int ini_load(const char *filename, const struct IniSection sections[]) {
 						!strcmp(INI_ANY_KEY, cur_section->params[j].key) ||
 						!strcmp(line_buffer, cur_section->params[j].key)
 					) {
-						cur_section->params[j].setter(
-								line_buffer, line_buffer + i + 3);
+						TRY(cur_section->params[j].setter(
+								line_buffer, line_buffer + i + 3));
 						break;
 					}
 				}
-				if (cur_section->params[j].key == NULL) {
-					throw_exc(ERR_INI_UNKNOWN_KEY,
+				if (cur_section->params[j].key == NULL)
+					THROW(ERR_INI_UNKNOWN_KEY,
 							line_buffer, cur_section->title, filename);
-					return 0;
-				}
 				break;
 			}
 			
-		if (i == len - 2) {
-			throw_exc(ERR_INI_AMBIGOUS_LINE, line_buffer, filename);
-			return 0;
-		}
+		if (i == len - 2)
+			THROW(ERR_INI_AMBIGOUS_LINE, line_buffer, filename);
 	}
-	pop_finally();
-	return 1;
+	FINALLY;
+	#undef FINALLY
+	#define FINALLY
+	return 0;
 }
 
-int ini_save(const char *filename, const struct IniSection sections[]) {
-	f = fopen(filename, "w");
-	if (f == NULL) {
-		throw_exc(ERR_FILE_OPEN_FOR_WRITING, filename);
-		return 0;
-	}
-	push_finally(ini_close_file);
+#define VALUE_BUFFER_SIZE 256
+char value_buffer[VALUE_BUFFER_SIZE];
+
+ExcCode ini_save(const char *filename, const struct IniSection sections[]) {
+	FILE *f = fopen(filename, "w");
+	if (f == NULL)
+		THROW(ERR_FILE_OPEN_FOR_WRITING, filename);
+	#undef FINALLY
+	#define FINALLY fclose(f);
 	int i;
 	for (i = 0; sections[i].title != NULL; i++) {
 		const struct IniSection *cur_section = &sections[i];
-		if (fprintf(f, "[%s]\n", cur_section->title) < 0) {
-			throw_exc(ERR_FILE_WRITE, filename);
-			return 0;
-		}
+		if (fprintf(f, "[%s]\n", cur_section->title) < 0)
+			THROW(ERR_FILE_WRITE, filename);
 		int j;
 		for (j = 0; sections[i].params[j].key != NULL; j++) {
-			if (!strcmp(INI_ANY_KEY, cur_section->params[j].key)) {
-				throw_exc(ERR_INI_SAVE_ANY_KEY);
-				return 0;
-			}
+			if (!strcmp(INI_ANY_KEY, cur_section->params[j].key))
+				THROW(ERR_INI_SAVE_ANY_KEY);
+			TRY(cur_section->params[j].getter(cur_section->params[j].key,
+					value_buffer, VALUE_BUFFER_SIZE));
 			if (fprintf(
-				f, "%s = %s\n",
-				cur_section->params[j].key,
-				cur_section->params[j].getter(cur_section->params[j].key)
-			) < 0) {
-				throw_exc(ERR_FILE_WRITE, filename);
-				return 0;
-			}
+				f, "%s = %s\n", cur_section->params[j].key, value_buffer
+			) < 0)
+				THROW(ERR_FILE_WRITE, filename);
 		}
 	}
-	pop_finally();
-	return 1;
+	FINALLY;
+	#undef FINALLY
+	#define FINALLY
+	return 0;
 }

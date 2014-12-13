@@ -1,6 +1,8 @@
 #ifndef INI_PARSER_H
 #define INI_PARSER_H
 
+#include "../common/exceptions.h"
+
 
 /* Supported INI file syntax:
 	[Section]
@@ -11,8 +13,8 @@
 
 struct IniParam {
 	const char *key;
-	void (*setter)(const char *key, const char *value);
-	const char *(*getter)(const char *key);
+	ExcCode (*setter)(const char *key, const char *value);
+	ExcCode (*getter)(const char *key, char *buffer, int buffer_size);
 };
 #define INI_ANY_KEY "*"
 
@@ -24,8 +26,8 @@ struct IniSection {
 	struct IniParam *params;
 };
 
-int ini_load(const char *filename, const struct IniSection sections[]);
-int ini_save(const char *filename, const struct IniSection sections[]);
+ExcCode ini_load(const char *filename, const struct IniSection sections[]);
+ExcCode ini_save(const char *filename, const struct IniSection sections[]);
 
 
 #endif

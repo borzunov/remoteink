@@ -1,4 +1,3 @@
-#include "../common/exceptions.h"
 #include "../common/ini_parser.h"
 #include "../common/messages.h"
 #include "control.h"
@@ -12,34 +11,38 @@
 char server_host[BUFFER_SIZE] = "0.0.0.0";
 int server_port = 9312;
 
-void load_server_host(const char *key, const char *value) {
+ExcCode load_server_host(const char *key, const char *value) {
 	strncpy(server_host, value, BUFFER_SIZE);
+	return 0;
 }
 
-void load_server_port(const char *key, const char *value) {
+ExcCode load_server_port(const char *key, const char *value) {
 	if (!(
 		sscanf(value, "%d", &server_port) == 1 &&
 		PORT_MIN <= server_port && server_port <= PORT_MAX
 	))
-		throw_exc(ERR_INVALID_PORT, PORT_MIN, PORT_MAX);
+		THROW(ERR_INVALID_PORT, PORT_MIN, PORT_MAX);
+	return 0;
 }
 
 
 int stats_enabled = 0;
 char stats_file[BUFFER_SIZE] = "stats.log";
 
-void load_stats_enabled(const char *key, const char *value) {
+ExcCode load_stats_enabled(const char *key, const char *value) {
 	if (!strcasecmp(value, INI_VALUE_FALSE))
 		stats_enabled = 0;
 	else
 	if (!strcasecmp(value, INI_VALUE_TRUE))
 		stats_enabled = 1;
 	else
-		throw_exc(ERR_INVALID_BOOL, key);
+		THROW(ERR_INVALID_BOOL, key);
+	return 0;
 }
 
-void load_stats_file(const char *key, const char *value) {
+ExcCode load_stats_file(const char *key, const char *value) {
 	strncpy(stats_file, value, BUFFER_SIZE);
+	return 0;
 }
 
 
@@ -66,11 +69,11 @@ int shortcuts_count = 0;
 #define ERR_SHORTCUT_UNKNOWN_ACTION "Unknown action \"%s\" in shortcut \"%s\""
 #define ERR_SHORTCUT_OVERFLOW "You can't define more than %d shortcuts"
 
-void load_shortcut(const char *key, const char *value) {
+ExcCode load_shortcut(const char *key, const char *value) {
 	if (!strcmp(value, SHORTCUT_VALUE_DISABLED))
-		return;
+		return 0;
 	if (shortcuts_count >= BUFFER_SIZE - 1)
-		throw_exc(ERR_SHORTCUT_OVERFLOW, BUFFER_SIZE - 1);
+		THROW(ERR_SHORTCUT_OVERFLOW, BUFFER_SIZE - 1);
 	
 	void (*handler)() = NULL;
 	for (int i = 0; handlers[i].key != NULL; i++)
@@ -79,12 +82,14 @@ void load_shortcut(const char *key, const char *value) {
 			break;
 		}
 	if (handler == NULL)
-		throw_exc(ERR_SHORTCUT_UNKNOWN_ACTION, key, value);
+		THROW(ERR_SHORTCUT_UNKNOWN_ACTION, key, value);
 	
-	struct Hotkey hotkey = parse_hotkey(value);
+	struct Hotkey hotkey;
+	TRY(parse_hotkey(value, &hotkey));
 	shortcuts[shortcuts_count].hotkey = hotkey;
 	shortcuts[shortcuts_count].handler = handler;
 	shortcuts_count++;
+	return 0;
 }
 
 
@@ -107,7 +112,8 @@ const struct IniSection sections[] = {
 };
 
 
-void load_config(const char *filename) {
-	ini_load(filename, sections);
+ExcCode load_config(const char *filename) {
+	TRY(ini_load(filename, sections));
 	shortcuts[shortcuts_count].handler = NULL;
+	return 0;
 }

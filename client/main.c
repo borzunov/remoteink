@@ -8,7 +8,8 @@
 
 #define TEXT_TITLE "InkMonitor v0.01 Alpha 4"
 
-const char *config_filename;
+#define CONFIG_FILENAME_SIZE 256
+char config_filename[CONFIG_FILENAME_SIZE];
 
 enum Stage {STAGE_INTRO, STAGE_MONITOR};
 
@@ -79,6 +80,23 @@ void edit_port_handler() {
 			KBD_NUMERIC, change_port_handler);
 }
 
+const char *orientation_cur_caption;
+
+void update_orientation() {
+	SetOrientation(orientation);
+	screen_width = ScreenWidth();
+	screen_height = ScreenHeight();
+}
+
+void switch_orientation_handler() {
+	orientation = !orientation;
+	orientation_cur_caption = orientation_captions[orientation];
+	update_orientation();
+	
+	save_config(config_filename);
+	show_intro();
+}
+
 void clear_labels() {
 	label_y = SCREEN_PADDING;
 	
@@ -106,20 +124,18 @@ void add_label(const char *message) {
 	label_y += font_label->height + LINE_SPACING;
 }
 
-#define FIELD_TEXT_MARGIN_LEFT 70
+#define FIELD_TEXT_MARGIN_LEFT 120
 
-const char *edit_text = "Edit";
-
-void add_field(const char *caption, const char *text,
-		void (*edit_handler)()) {
+void add_field(const char *label_caption, const char *text,
+		const char *button_caption, void (*button_handler)()) {
 	SetFont(font_caption, BLACK);
-	int edit_text_width = StringWidth(edit_text);
+	int button_caption_width = StringWidth(button_caption);
 	int button_right = screen_width - SCREEN_PADDING;
 			
 	controls[controls_top++] = ui_label_create(
 		SCREEN_PADDING, FIELD_TEXT_MARGIN_LEFT,
 		label_y + font_caption_offset, UI_ALIGN_LEFT,
-		caption, font_caption, BLACK,
+		label_caption, font_caption, BLACK,
 		1
 	); // Caption
 	controls[controls_top++] = ui_label_create(
@@ -129,12 +145,13 @@ void add_field(const char *caption, const char *text,
 		1
 	); // Content
 	controls[controls_top++] = ui_button_create(
-		button_right - 2 * UI_BUTTON_PADDING - edit_text_width, button_right,
+		button_right - 2 * UI_BUTTON_PADDING - button_caption_width,
+		button_right,
 		label_y - UI_BUTTON_PADDING + font_caption_offset, UI_ALIGN_LEFT,
-		edit_text, font_caption, BLACK,
-		edit_handler,
+		button_caption, font_caption, BLACK,
+		button_handler,
 		1
-	); // "Edit" button
+	); // Button
 	
 	label_y += font_label->height + LINE_SPACING + PARAGRAPH_EXTRA_SPACING;
 }
@@ -158,6 +175,8 @@ void connect_handler() {
 
 const char *connect_text = "Connect";
 const char *quit_text = "Quit";
+
+const char *edit_text = "Edit";
 
 void show_intro() {
 	stage = STAGE_INTRO;
@@ -194,9 +213,12 @@ void show_intro() {
 	
 	add_label("    Settings");
 	label_y += PARAGRAPH_EXTRA_SPACING;
-	add_field("Host:", server_host, edit_host_handler);
+	add_field("Host:", server_host, edit_text, edit_host_handler);
 	sprintf(server_port_buffer, "%d", server_port);
-	add_field("Port:", server_port_buffer, edit_port_handler);
+	add_field("Port:", server_port_buffer, edit_text, edit_port_handler);
+	orientation_cur_caption = orientation_captions[orientation];
+	add_field("Orientation:", orientation_cur_caption,
+			"Switch", switch_orientation_handler);
 	
 	ui_repaint(controls, controls_top);
 }
@@ -234,12 +256,11 @@ void stop_monitor_handler() {
 int main_handler(int type, int par1, int par2) {
 	switch (type) {
 	case EVT_INIT:
-		set_except(NULL);
-		config_filename = get_default_config_path("inkmonitor.ini");
+		get_default_config_path("inkmonitor.ini",
+				config_filename, CONFIG_FILENAME_SIZE);
 		load_config(config_filename);
-	
-		screen_width = ScreenWidth();
-		screen_height = ScreenHeight();
+		
+		update_orientation();
 		
 		font_title = OpenFont("cour", 30, 1);
 		font_label = OpenFont("cour", 20, 1);

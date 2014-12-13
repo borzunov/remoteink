@@ -2,7 +2,7 @@
 #define INI_PARSER_H
 
 
-const char *get_default_config_path(const char *name);
+void get_default_config_path(const char *name, char *buffer, int buffer_size);
 
 
 #endif

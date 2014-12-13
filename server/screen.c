@@ -1,4 +1,3 @@
-#include "../common/exceptions.h"
 #include "../common/messages.h"
 #include "screen.h"
 
@@ -7,10 +6,10 @@ Display *display;
 Screen *screen;
 Window root;
 
-void screenshot_init(int *screen_width, int *screen_height) {
+ExcCode screenshot_init(int *screen_width, int *screen_height) {
 	display = XOpenDisplay(NULL);
 	if (!display)
-		throw_exc(ERR_DISPLAY);
+		THROW(ERR_DISPLAY);
 	int screen_no = DefaultScreen(display);
 	screen = ScreenOfDisplay(display, screen_no);
 	*screen_width = screen->width;
@@ -25,6 +24,7 @@ void screenshot_init(int *screen_width, int *screen_height) {
 	imlib_context_set_colormap(colormap);
 	imlib_context_set_color_modifier(NULL);
 	imlib_context_set_operation(IMLIB_OP_COPY);
+	return 0;
 }
 
 Imlib_Image screenshot_get(int x, int y, int width, int height) {

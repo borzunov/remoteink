@@ -1,5 +1,6 @@
 #include "../common/ini_parser.h"
 #include "../common/messages.h"
+#include "../common/utils.h"
 #include "options.h"
 
 #include <stdio.h>
@@ -21,11 +22,7 @@ ExcCode save_server_host(const char *key, char *buffer, int buffer_size) {
 }
 
 ExcCode load_server_port(const char *key, const char *value) {
-	if (!(
-		sscanf(value, "%d", &server_port) == 1 &&
-		PORT_MIN <= server_port && server_port <= PORT_MAX
-	))
-		THROW(ERR_INVALID_PORT, PORT_MIN, PORT_MAX);
+	TRY(parse_port(value, &server_port));
 	return 0;
 }
 

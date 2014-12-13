@@ -1,10 +1,12 @@
+#include "../common/messages.h"
 #include "../common/protocol.h"
 #include "client.h"
-#include "main.h"
 #include "options.h"
 
 #include <inkview.h>
 #include <netdb.h>
+
+#define ERR_UNSUPPORTED_COMMAND "Unsupported command is received"
 
 unsigned screen_width, screen_height;
 
@@ -17,13 +19,14 @@ int conn_fd;
 
 int client_process;
 
-void client_send_confirm() {
+ExcCode client_send_confirm() {
 	buffer[0] = RES_CONFIRM;
 	if (write(conn_fd, buffer, 1) < 0 && client_process)
-		show_conn_error(send_error);
+		THROW(ERR_SOCK_WRITE);
+	return 0;
 }
 
-int client_exec(const char *commands, int len) {
+ExcCode client_exec(const char *commands, int len, int *processed) {
 	int i;
 	unsigned j, count, w, h;
 	for (i = 0; i < len; i++) {
@@ -31,14 +34,18 @@ int client_exec(const char *commands, int len) {
 			case CONN_CHECK:
 				break;
 			case CMD_RESET_POSITION:
-				if (i + COORD_SIZE * 2 + 1 > len)
-					return i;
+				if (i + COORD_SIZE * 2 + 1 > len) {
+					*processed = i;
+					return 0;
+				}
 				READ_COORD(x, commands, i);
 				READ_COORD(y, commands, i);
 				break;
 			case CMD_SKIP:
-				if (i + COUNT_SIZE + 1 > len)
-					return i;
+				if (i + COUNT_SIZE + 1 > len) {
+					*processed = i;
+					return 0;
+				}
 				READ_COUNT(count, commands, i);
 				
 				count += x;
@@ -46,8 +53,10 @@ int client_exec(const char *commands, int len) {
 				x = count % screen_width;
 				break;
 			case CMD_PUT_REPEAT:
-				if (i + COUNT_SIZE + 1 > len)
-					return i;
+				if (i + COUNT_SIZE + 1 > len) {
+					*processed = i;
+					return 0;
+				}
 				READ_COUNT(count, commands, i);
 				
 				for (j = 0; j < count; j++) {
@@ -60,8 +69,10 @@ int client_exec(const char *commands, int len) {
 				}
 				break;
 			case CMD_PUT_COLOR:
-				if (i + COUNT_SIZE + 1 > len)
-					return i;
+				if (i + COUNT_SIZE + 1 > len) {
+					*processed = i;
+					return 0;
+				}
 				READ_COLOR(color, commands, i);
 				
 				DrawPixel(x, y, color);
@@ -74,21 +85,27 @@ int client_exec(const char *commands, int len) {
 				
 			#ifdef CMD_EXTENTED
 			case CMD_SET_COLOR:
-				if (i + COLOR_SIZE + 1 > len)
-					return i;
+				if (i + COLOR_SIZE + 1 > len) {
+					*processed = i;
+					return 0;
+				}
 				READ_COLOR(color, commands, i);
 				break;
 			case CMD_DRAW_PIXEL:
-				if (i + COORD_SIZE * 2 + 1 > len)
-					return i;
+				if (i + COORD_SIZE * 2 + 1 > len) {
+					*processed = i;
+					return 0;
+				}
 				READ_COORD(x, commands, i);
 				READ_COORD(y, commands, i);
 				
 				DrawPixel(x, y, color);
 				break;
 			case CMD_DRAW_LINE:
-				if (i + COORD_SIZE * 4 + 1 > len)
-					return i;
+				if (i + COORD_SIZE * 4 + 1 > len) {
+					*processed = i;
+					return 0;
+				}
 				READ_COORD(x1, commands, i);
 				READ_COORD(y1, commands, i);
 				READ_COORD(x2, commands, i);
@@ -97,8 +114,10 @@ int client_exec(const char *commands, int len) {
 				DrawLine(x1, y1, x2, y2, color);
 				break;
 			case CMD_FILL_AREA:
-				if (i + COORD_SIZE * 4 + 1 > len)
-					return i;
+				if (i + COORD_SIZE * 4 + 1 > len) {
+					*processed = i;
+					return 0;
+				}
 				READ_COORD(x, commands, i);
 				READ_COORD(y, commands, i);
 				READ_COORD(w, commands, i);
@@ -109,71 +128,80 @@ int client_exec(const char *commands, int len) {
 				
 			case CMD_FULL_UPDATE:
 				FullUpdate();
-				client_send_confirm();
+				TRY(client_send_confirm());
 				break;
 			#endif
 			case CMD_SOFT_UPDATE:
 				SoftUpdate();
-				client_send_confirm();
+				TRY(client_send_confirm());
 				break;
 			case CMD_PARTIAL_UPDATE:
-				if (i + COORD_SIZE * 4 + 1 > len)
-					return i;
+				if (i + COORD_SIZE * 4 + 1 > len) {
+					*processed = i;
+					return 0;
+				}
 				READ_COORD(x, commands, i);
 				READ_COORD(y, commands, i);
 				READ_COORD(w, commands, i);
 				READ_COORD(h, commands, i);
 				
 				PartialUpdate(x, y, w, h);
-				client_send_confirm();
+				TRY(client_send_confirm());
 				break;
 			#ifdef CMD_EXTENTED
 			case CMD_PARTIAL_UPDATE_BW:
-				if (i + COORD_SIZE * 4 + 1 > len)
-					return i;
+				if (i + COORD_SIZE * 4 + 1 > len) {
+					*processed = i;
+					return 0;
+				}
 				READ_COORD(x, commands, i);
 				READ_COORD(y, commands, i);
 				READ_COORD(w, commands, i);
 				READ_COORD(h, commands, i);
 				
 				PartialUpdateBW(x, y, w, h);
-				client_send_confirm();
+				TRY(client_send_confirm());
 				break;
 			case CMD_DYNAMIC_UPDATE:
-				if (i + COORD_SIZE * 4 + 1 > len)
-					return i;
+				if (i + COORD_SIZE * 4 + 1 > len) {
+					*processed = i;
+					return 0;
+				}
 				READ_COORD(x, commands, i);
 				READ_COORD(y, commands, i);
 				READ_COORD(w, commands, i);
 				READ_COORD(h, commands, i);
 				
 				DynamicUpdate(x, y, w, h);
-				client_send_confirm();
+				TRY(client_send_confirm());
 				break;
 			case CMD_DYNAMIC_UPDATE_BW:
-				if (i + COORD_SIZE * 4 + 1 > len)
-					return i;
+				if (i + COORD_SIZE * 4 + 1 > len) {
+					*processed = i;
+					return 0;
+				}
 				READ_COORD(x, commands, i);
 				READ_COORD(y, commands, i);
 				READ_COORD(w, commands, i);
 				READ_COORD(h, commands, i);
 				
 				DynamicUpdateBW(x, y, w, h);
-				client_send_confirm();
+				TRY(client_send_confirm());
 				break;
 			#endif
 			default:
-				show_conn_error("Unsupported command is received");
+				THROW(ERR_UNSUPPORTED_COMMAND);
 		}
 	}
-	return len;
+	*processed = len;
+	return 0;
 }
 
 void client_shutdown() {
 	shutdown(conn_fd, SHUT_RDWR);
 }
 
-void client_mainloop() {
+ExcCode client_mainloop() {
 	x = 0;
 	y = 0;
 	color = 0;
@@ -186,26 +214,38 @@ void client_mainloop() {
 		if (!client_process || !read_size)
 			break;
 		if (read_size < 0)
-			show_conn_error(recv_error);
+			THROW(ERR_SOCK_READ);
 		
-		int executed_size = client_exec(buffer, prefix_size + read_size);
+		int executed_size;
+		TRY(client_exec(buffer, prefix_size + read_size, &executed_size));
 		prefix_size += read_size - executed_size;
 		memmove(buffer, buffer + executed_size, prefix_size);
 	}
+	return 0;
 }
 
-void *client_connect(void *arg) {
+void query_network() {
+	if (!(QueryNetwork() & NET_CONNECTED)) {
+		NetConnect(NULL);
+		
+		// Network selection dialog can ruin the image on the screen. Let's
+		// wait until it disappears.
+		sleep(1);
+	}
+}
+
+ExcCode client_connect() {
 	query_network();
 	ClearScreen();
 	ShowHourglass();
 	
 	conn_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (conn_fd < 0)
-		show_conn_error("Failed to create socket");
+		THROW(ERR_SOCK_CREATE);
 	
 	struct hostent *serv = gethostbyname(server_host);
 	if (serv == NULL)
-		show_conn_error("No such host");
+		THROW(ERR_SOCK_RESOLVE, server_host);
 	struct sockaddr_in serv_addr;
 	serv_addr.sin_family = AF_INET;
 	memcpy(&serv_addr.sin_addr.s_addr, serv->h_addr, serv->h_length);
@@ -214,23 +254,21 @@ void *client_connect(void *arg) {
 	if (connect(
 		conn_fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)
 	) < 0)
-		show_conn_error("Failed to connect");
+		THROW(ERR_SOCK_CONNECT, server_host, server_port);
 	
 	if (write(conn_fd, HEADER "\n", strlen(HEADER) + 1) < 0)
-		show_conn_error(send_error);
+		THROW(ERR_SOCK_WRITE);
 
 	int i = 0;
 	WRITE_COORD(screen_width, buffer, i);
 	WRITE_COORD(screen_height, buffer, i);
 	if (write(conn_fd, buffer, COORD_SIZE * 2) < 0)
-		show_conn_error(send_error);
+		THROW(ERR_SOCK_WRITE);
 	HideHourglass();
 	
-	client_mainloop();
+	TRY(client_mainloop());
 	
 	if (close(conn_fd) < 0)
-		show_conn_error("Failed to close connection");
-	
-	show_intro();
-	return NULL;
+		THROW(ERR_SOCK_CLOSE);
+	return 0;
 }

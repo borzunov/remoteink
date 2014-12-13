@@ -2,7 +2,6 @@
 #include "../common/messages.h"
 #include "../common/utils.h"
 #include "client.h"
-#include "main.h"
 #include "options.h"
 #include "ui.h"
 
@@ -22,6 +21,7 @@ int font_caption_offset;
 #define LINE_SPACING 3
 #define PARAGRAPH_EXTRA_SPACING 12
 
+#define CONTROLS_MAX_COUNT 32
 struct UIControl *controls[CONTROLS_MAX_COUNT];
 int controls_top = 0;
 
@@ -29,6 +29,9 @@ int controls_top = 0;
 short label_y;
 
 int pointer_need_repaint = 1;
+
+void show_error(const char *error);
+void show_intro();
 
 void change_option_handler(char *buffer) {
 	save_config(config_filename);
@@ -49,28 +52,13 @@ char server_port_buffer[BUFFER_SIZE];
 
 void change_port_handler(char *buffer) {
 	int incorrect = 0;
-	if (buffer) {
-		int number;
-		if (
-			sscanf(server_port_buffer, "%d", &number) == 1 &&
-			PORT_MIN <= number && number <= PORT_MAX
-		) {
-			server_port = number;
-		} else {
-			incorrect = 1;
-			sprintf(server_port_buffer, "%d", server_port);
-		}
+	if (buffer && parse_port(server_port_buffer, &server_port)) {
+		incorrect = 1;
+		sprintf(server_port_buffer, "%d", server_port);
 	}
 	change_option_handler(buffer);
-	if (incorrect) {
-		char message_buffer[256];
-		sprintf(
-			message_buffer,
-			"Port number should be in the interval from %d to %d",
-			PORT_MIN, PORT_MAX
-		);
-		show_error(message_buffer);
-	}
+	if (incorrect)
+		show_error(exc_message);
 }
 
 void edit_port_handler() {
@@ -158,13 +146,22 @@ void add_field(const char *label_caption, const char *text,
 
 pthread_t client_thread;
 
-void exec_connect() {
+void *start_client_connect(void *arg) {
+	if (client_connect())
+		show_error(exc_message);
+	else
+		show_intro();
+	return NULL;
+}
+
+ExcCode exec_connect() {
 	stage = STAGE_MONITOR;
 	SetAutoPowerOff(0);
 	
 	int res;
-	if (pthread_create(&client_thread, NULL, client_connect, &res) != 0)
-		show_error("Failed to create client thread");
+	if (pthread_create(&client_thread, NULL, start_client_connect, &res) != 0)
+		THROW(ERR_THREAD_CREATE);
+	return 0;
 }
 
 int schedule_connect = 0;
@@ -230,24 +227,6 @@ void show_error(const char *error) {
 	Message(ICON_ERROR, "Error", error, MESSAGE_MSECS);
 }
 
-void show_conn_error(const char *message) {
-	show_error(message);
-	pthread_exit(NULL);
-}
-
-const char *recv_error = "Failed to read data";
-const char *send_error = "Failed to write data";
-
-void query_network() {
-	if (!(QueryNetwork() & NET_CONNECTED)) {
-		NetConnect(NULL);
-		
-		// Network selection dialog can ruin the image on the screen. Let's
-		// wait until it disappears.
-		sleep(1);
-	}
-}
-
 void stop_monitor_handler() {
 	client_process = 0;
 	client_shutdown();
@@ -301,7 +280,8 @@ int main_handler(int type, int par1, int par2) {
 			break;
 	}
 	if (schedule_connect) {
-		exec_connect();
+		if (exec_connect())
+			show_error(exc_message);
 		schedule_connect = 0;
 	}
 	return 0;

@@ -1,8 +1,10 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#include "../common/exceptions.h"
 
-void *client_connect(void *arg);
+
+ExcCode client_connect();
 void client_shutdown();
 
 

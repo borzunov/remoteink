@@ -11,7 +11,7 @@ ExcCode send_buffer(int conn_fd, const char *buffer, int len) {
 	profiler_start(STAGE_TRANSFER);
 	
 	if (write(conn_fd, buffer, len) < 0)
-		THROW(ERR_SOCK_SEND);
+		THROW(ERR_SOCK_WRITE);
 		
 	profiler_finish(STAGE_TRANSFER);
 	return 0;
@@ -21,7 +21,7 @@ ExcCode wait_confirm(int conn_fd) {
 	profiler_start(STAGE_DRAW);
 	
 	if (read(conn_fd, buffer, 1) != 1 || buffer[0] != RES_CONFIRM)
-		THROW(ERR_SOCK_RECV);
+		THROW(ERR_SOCK_READ);
 	
 	profiler_finish(STAGE_DRAW);
 	return 0;

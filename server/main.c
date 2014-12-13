@@ -158,7 +158,7 @@ ExcCode send_next_frame(Imlib_Image *image, DATA32 **data,
 		int region_width, int region_height) {
 	// Check whether connection is dead. If so, SIGPIPE will be sent.
 	if (write(conn_fd, &conn_check_char, sizeof (char)) < 0)
-		THROW(ERR_SOCK_SEND);
+		THROW(ERR_SOCK_WRITE);
 	
 	profiler_start(STAGE_SHOT);   
 	track_focused_window(); 
@@ -194,7 +194,7 @@ ExcCode setup_server() {
 
 	struct hostent *serv = gethostbyname(server_host);
 	if (serv == NULL)
-		THROW(ERR_SOCK_RESOLVE);
+		THROW(ERR_SOCK_RESOLVE, server_host);
 	struct sockaddr_in serv_addr;
 	serv_addr.sin_family = AF_INET;
 	memcpy(&serv_addr.sin_addr.s_addr, serv->h_addr, serv->h_length);
@@ -223,7 +223,7 @@ ExcCode accept_client() {
 
 ExcCode perform_handshake() {
 	if (read(conn_fd, buffer, COORD_SIZE * 2) != COORD_SIZE * 2)
-		THROW(ERR_SOCK_RECV);
+		THROW(ERR_SOCK_READ);
 	int i = -1;
 	READ_COORD(client_width, buffer, i);
 	READ_COORD(client_height, buffer, i);

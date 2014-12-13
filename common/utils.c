@@ -1,4 +1,5 @@
 #include "exceptions.h"
+#include "messages.h"
 #include "utils.h"
 
 #include <libgen.h>
@@ -33,4 +34,16 @@ void get_default_config_path(const char *name, char *buffer, int buffer_size) {
 	}
 	int directory_len = strlen(buffer);
 	snprintf(buffer + directory_len, buffer_size - directory_len, "/%s", name);
+}
+
+
+ExcCode parse_port(const char *str, int *res) {
+	int number;
+	if (!(
+		sscanf(str, "%d", &number) == 1 &&
+		PORT_MIN <= number && number <= PORT_MAX
+	))
+		THROW(ERR_INVALID_PORT, PORT_MIN, PORT_MAX);
+	*res = number;
+	return 0;
 }

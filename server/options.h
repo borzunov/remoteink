@@ -9,7 +9,7 @@ extern char server_host[];
 extern int server_port;
 
 extern int stats_enabled;
-extern char stats_file[];
+extern char stats_filename[];
 
 extern struct Shortcut shortcuts[];
 

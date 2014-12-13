@@ -8,12 +8,13 @@
 #include <string.h>
 
 
-#define BUFFER_SIZE 256
-char server_host[BUFFER_SIZE] = "0.0.0.0";
+#define SERVER_HOST_SIZE 256
+char server_host[SERVER_HOST_SIZE] = "0.0.0.0";
 int server_port = 9312;
 
 ExcCode load_server_host(const char *key, const char *value) {
-	strncpy(server_host, value, BUFFER_SIZE);
+	strncpy(server_host, value, SERVER_HOST_SIZE - 1);
+	server_host[SERVER_HOST_SIZE - 1] = '\0';
 	return 0;
 }
 
@@ -24,7 +25,8 @@ ExcCode load_server_port(const char *key, const char *value) {
 
 
 int stats_enabled = 0;
-char stats_file[BUFFER_SIZE] = "stats.log";
+#define STATS_FILENAME_SIZE 256
+char stats_filename[STATS_FILENAME_SIZE] = "stats.log";
 
 ExcCode load_stats_enabled(const char *key, const char *value) {
 	if (!strcasecmp(value, INI_VALUE_FALSE))
@@ -37,8 +39,9 @@ ExcCode load_stats_enabled(const char *key, const char *value) {
 	return 0;
 }
 
-ExcCode load_stats_file(const char *key, const char *value) {
-	strncpy(stats_file, value, BUFFER_SIZE);
+ExcCode load_stats_filename(const char *key, const char *value) {
+	strncpy(stats_filename, value, STATS_FILENAME_SIZE - 1);
+	stats_filename[STATS_FILENAME_SIZE - 1] = '\0';
 	return 0;
 }
 
@@ -58,7 +61,8 @@ const struct HandlerRecord handlers[] = {
 	{NULL, NULL}
 };
 
-struct Shortcut shortcuts[BUFFER_SIZE];
+#define SHORTCUTS_MAX_COUNT 256
+struct Shortcut shortcuts[SHORTCUTS_MAX_COUNT];
 int shortcuts_count = 0;
 
 #define SHORTCUT_VALUE_DISABLED "None"
@@ -69,8 +73,8 @@ int shortcuts_count = 0;
 ExcCode load_shortcut(const char *key, const char *value) {
 	if (!strcmp(value, SHORTCUT_VALUE_DISABLED))
 		return 0;
-	if (shortcuts_count >= BUFFER_SIZE - 1)
-		THROW(ERR_SHORTCUT_OVERFLOW, BUFFER_SIZE - 1);
+	if (shortcuts_count >= SHORTCUTS_MAX_COUNT - 1)
+		THROW(ERR_SHORTCUT_OVERFLOW, SHORTCUTS_MAX_COUNT - 1);
 	
 	void (*handler)() = NULL;
 	for (int i = 0; handlers[i].key != NULL; i++)
@@ -98,7 +102,7 @@ const struct IniSection sections[] = {
 	}},
 	{"Stats", (struct IniParam []) {
 		{"Enabled", load_stats_enabled, NULL},
-		{"File", load_stats_file, NULL},
+		{"File", load_stats_filename, NULL},
 		{NULL, NULL, NULL}
 	}},
 	{"Shortcuts", (struct IniParam []) {

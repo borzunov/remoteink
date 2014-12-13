@@ -47,8 +47,8 @@ void exit_handler() {
 	close(conn_fd);
 	close(serv_fd);
 	
-	if (has_stats && stats_enabled && !profiler_save(stats_file))
-		printf("[*] Stats saved to \"%s\"\n", stats_file);
+	if (has_stats && stats_enabled && !profiler_save(stats_filename))
+		printf("[*] Stats saved to \"%s\"\n", stats_filename);
 }
 
 void sigint_handler(int code) {
@@ -115,9 +115,10 @@ ExcCode parse_arguments(int argc, char *argv[]) {
 			exit(EXIT_SUCCESS);
 		}
 		
-		if (pos == 0)
-			strncpy(config_filename, argv[i], CONFIG_FILENAME_SIZE);
-		else
+		if (pos == 0) {
+			strncpy(config_filename, argv[i], CONFIG_FILENAME_SIZE - 1);
+			config_filename[CONFIG_FILENAME_SIZE - 1] = '\0';
+		} else
 			THROW(ERR_ARG_EXCESS);
 		pos++;
 	}

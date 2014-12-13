@@ -15,8 +15,8 @@ ExcCode image_send_diff(
 );
 
 
-#define BUFFER_SIZE 4 * 1024 * 1024
-extern char buffer[BUFFER_SIZE];
+#define TRANSFER_BUFFER_SIZE 4 * 1024 * 1024
+extern char buffer[TRANSFER_BUFFER_SIZE];
 
 
 #endif

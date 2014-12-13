@@ -46,15 +46,15 @@ void edit_host_handler() {
 			KBD_NORMAL, change_option_handler);
 }
 
-#define BUFFER_SIZE 256
-char server_port_buffer[BUFFER_SIZE];
+#define SERVER_PORT_BUFFER_SIZE 256
+char server_port_buffer[SERVER_PORT_BUFFER_SIZE];
 #define PORT_MAXLEN 5
 
 void change_port_handler(char *buffer) {
 	int incorrect = 0;
 	if (buffer && parse_port(server_port_buffer, &server_port)) {
 		incorrect = 1;
-		sprintf(server_port_buffer, "%d", server_port);
+		snprintf(server_port_buffer, SERVER_PORT_BUFFER_SIZE, "%d", server_port);
 	}
 	change_option_handler(buffer);
 	if (incorrect)
@@ -63,7 +63,7 @@ void change_port_handler(char *buffer) {
 
 void edit_port_handler() {
 	pointer_need_repaint = 0;
-	sprintf(server_port_buffer, "%d", server_port);
+	snprintf(server_port_buffer, SERVER_PORT_BUFFER_SIZE, "%d", server_port);
 	OpenKeyboard("Port:", server_port_buffer, PORT_MAXLEN,
 			KBD_NUMERIC, change_port_handler);
 }
@@ -211,7 +211,7 @@ void show_intro() {
 	add_label("    Settings");
 	label_y += PARAGRAPH_EXTRA_SPACING;
 	add_field("Host:", server_host, edit_text, edit_host_handler);
-	sprintf(server_port_buffer, "%d", server_port);
+	snprintf(server_port_buffer, SERVER_PORT_BUFFER_SIZE, "%d", server_port);
 	add_field("Port:", server_port_buffer, edit_text, edit_port_handler);
 	orientation_cur_caption = orientation_captions[orientation];
 	add_field("Orientation:", orientation_cur_caption,

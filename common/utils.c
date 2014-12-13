@@ -30,6 +30,7 @@ ExcCode get_executable_dirname(char *buffer, int buffer_size) {
 void get_default_config_path(const char *name, char *buffer, int buffer_size) {
 	if (get_executable_dirname(buffer, buffer_size)) {
 		strncpy(buffer, name, buffer_size);
+		buffer[buffer_size - 1] = '\0';
 		return;
 	}
 	int directory_len = strlen(buffer);

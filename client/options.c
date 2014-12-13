@@ -7,17 +7,19 @@
 #include <string.h>
 
 
-#define BUFFER_SIZE 256
-char server_host[BUFFER_SIZE] = "192.168.0.101";
+#define SERVER_HOST_SIZE 256
+char server_host[SERVER_HOST_SIZE] = "192.168.0.101";
 int server_port = 9312;
 
 ExcCode load_server_host(const char *key, const char *value) {
-	strncpy(server_host, value, BUFFER_SIZE);
+	strncpy(server_host, value, SERVER_HOST_SIZE - 1);
+	server_host[SERVER_HOST_SIZE - 1] = '\0';
 	return 0;
 }
 
 ExcCode save_server_host(const char *key, char *buffer, int buffer_size) {
-	strncpy(buffer, server_host, buffer_size);
+	strncpy(buffer, server_host, buffer_size - 1);
+	buffer[buffer_size - 1] = '\0';
 	return 0;
 }
 
@@ -48,7 +50,8 @@ ExcCode load_orientation(const char *key, const char *value) {
 }
 
 ExcCode save_orientation(const char *key, char *buffer, int buffer_size) {
-	strncpy(buffer, orientation_captions[orientation], buffer_size);
+	strncpy(buffer, orientation_captions[orientation], buffer_size - 1);
+	buffer[buffer_size - 1] = '\0';
 	return 0;
 }
 

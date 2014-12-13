@@ -10,8 +10,8 @@
 
 unsigned screen_width, screen_height;
 
-#define BUFFER_SIZE 4 * 1024 * 1024
-char buffer[BUFFER_SIZE];
+#define TRANSFER_BUFFER_SIZE 4 * 1024 * 1024
+char buffer[TRANSFER_BUFFER_SIZE];
 
 unsigned x, y, color;
 
@@ -210,7 +210,7 @@ ExcCode client_mainloop() {
 	client_process = 1;
 	while (client_process) {
 		int read_size = read(conn_fd,
-				buffer + prefix_size, BUFFER_SIZE - prefix_size);
+				buffer + prefix_size, TRANSFER_BUFFER_SIZE - prefix_size);
 		if (!client_process || !read_size)
 			break;
 		if (read_size < 0)

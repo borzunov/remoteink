@@ -5,7 +5,7 @@
 #include "profiler.h"
 #include "transfer.h"
 
-char buffer[BUFFER_SIZE];
+char buffer[TRANSFER_BUFFER_SIZE];
 
 ExcCode send_buffer(int conn_fd, const char *buffer, int len) {
 	profiler_start(STAGE_TRANSFER);

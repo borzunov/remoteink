@@ -255,49 +255,50 @@ void stop_monitor_handler() {
 
 int main_handler(int type, int par1, int par2) {
 	switch (type) {
-	case EVT_INIT:
-		get_default_config_path("inkmonitor.ini",
-				config_filename, CONFIG_FILENAME_SIZE);
-		load_config(config_filename);
-		
-		update_orientation();
-		
-		font_title = OpenFont("cour", 30, 1);
-		font_label = OpenFont("cour", 20, 1);
-		font_caption = OpenFont("cour", 17, 1);
-		font_caption_offset = (font_label->height - font_caption->height) / 2;
-		break;
-	case EVT_SHOW:
-		if (stage == STAGE_INTRO)
-			show_intro();
-		break;
-	case EVT_KEYPRESS:
-		switch (par1) {
-		case KEY_LEFT:
-		case KEY_PREV:
-			if (stage == STAGE_INTRO)
-				CloseApp();
-			else
-			if (stage == STAGE_MONITOR)
-				stop_monitor_handler();
+		case EVT_INIT:
+			get_default_config_path("inkmonitor.ini",
+					config_filename, CONFIG_FILENAME_SIZE);
+			load_config(config_filename);
+			
+			update_orientation();
+			
+			font_title = OpenFont("cour", 30, 1);
+			font_label = OpenFont("cour", 20, 1);
+			font_caption = OpenFont("cour", 17, 1);
+			font_caption_offset =
+					(font_label->height - font_caption->height) / 2;
 			break;
-		case KEY_RIGHT:
-		case KEY_NEXT:
+		case EVT_SHOW:
 			if (stage == STAGE_INTRO)
-				connect_handler();
+				show_intro();
 			break;
-		}
-		break;
-	case EVT_POINTERDOWN:
-	case EVT_POINTERUP:
-		if (stage == STAGE_INTRO) {
-			ui_pointer(controls, controls_top, type, par1, par2);
-			if (pointer_need_repaint) {
-				ui_repaint(controls, controls_top);
-			} else
-				pointer_need_repaint = 1;
-		}
-		break;
+		case EVT_KEYPRESS:
+			switch (par1) {
+				case KEY_LEFT:
+				case KEY_PREV:
+					if (stage == STAGE_INTRO)
+						CloseApp();
+					else
+					if (stage == STAGE_MONITOR)
+						stop_monitor_handler();
+					break;
+				case KEY_RIGHT:
+				case KEY_NEXT:
+					if (stage == STAGE_INTRO)
+						connect_handler();
+					break;
+			}
+			break;
+		case EVT_POINTERDOWN:
+		case EVT_POINTERUP:
+			if (stage == STAGE_INTRO) {
+				ui_pointer(controls, controls_top, type, par1, par2);
+				if (pointer_need_repaint) {
+					ui_repaint(controls, controls_top);
+				} else
+					pointer_need_repaint = 1;
+			}
+			break;
 	}
 	if (schedule_connect) {
 		exec_connect();

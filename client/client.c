@@ -28,142 +28,142 @@ int client_exec(const char *commands, int len) {
 	unsigned j, count, w, h;
 	for (i = 0; i < len; i++) {
 		switch (commands[i]) {
-		case CONN_CHECK:
-			break;
-		case CMD_RESET_POSITION:
-			if (i + COORD_SIZE * 2 + 1 > len)
-				return i;
-			READ_COORD(x, commands, i);
-			READ_COORD(y, commands, i);
-			break;
-		case CMD_SKIP:
-			if (i + COUNT_SIZE + 1 > len)
-				return i;
-			READ_COUNT(count, commands, i);
-			
-			count += x;
-			y += count / screen_width;
-			x = count % screen_width;
-			break;
-		case CMD_PUT_REPEAT:
-			if (i + COUNT_SIZE + 1 > len)
-				return i;
-			READ_COUNT(count, commands, i);
-			
-			for (j = 0; j < count; j++) {
+			case CONN_CHECK:
+				break;
+			case CMD_RESET_POSITION:
+				if (i + COORD_SIZE * 2 + 1 > len)
+					return i;
+				READ_COORD(x, commands, i);
+				READ_COORD(y, commands, i);
+				break;
+			case CMD_SKIP:
+				if (i + COUNT_SIZE + 1 > len)
+					return i;
+				READ_COUNT(count, commands, i);
+				
+				count += x;
+				y += count / screen_width;
+				x = count % screen_width;
+				break;
+			case CMD_PUT_REPEAT:
+				if (i + COUNT_SIZE + 1 > len)
+					return i;
+				READ_COUNT(count, commands, i);
+				
+				for (j = 0; j < count; j++) {
+					DrawPixel(x, y, color);
+					if (++x == screen_width) {
+						x = 0;
+						if (++y == screen_height)
+							y = 0;
+					}
+				}
+				break;
+			case CMD_PUT_COLOR:
+				if (i + COUNT_SIZE + 1 > len)
+					return i;
+				READ_COLOR(color, commands, i);
+				
 				DrawPixel(x, y, color);
 				if (++x == screen_width) {
 					x = 0;
 					if (++y == screen_height)
 						y = 0;
 				}
-			}
-			break;
-		case CMD_PUT_COLOR:
-			if (i + COUNT_SIZE + 1 > len)
-				return i;
-			READ_COLOR(color, commands, i);
-			
-			DrawPixel(x, y, color);
-			if (++x == screen_width) {
-				x = 0;
-				if (++y == screen_height)
-					y = 0;
-			}
-			break;
-			
-		#ifdef CMD_EXTENTED
-		case CMD_SET_COLOR:
-			if (i + COLOR_SIZE + 1 > len)
-				return i;
-			READ_COLOR(color, commands, i);
-			break;
-		case CMD_DRAW_PIXEL:
-			if (i + COORD_SIZE * 2 + 1 > len)
-				return i;
-			READ_COORD(x, commands, i);
-			READ_COORD(y, commands, i);
-			
-			DrawPixel(x, y, color);
-			break;
-		case CMD_DRAW_LINE:
-			if (i + COORD_SIZE * 4 + 1 > len)
-				return i;
-			READ_COORD(x1, commands, i);
-			READ_COORD(y1, commands, i);
-			READ_COORD(x2, commands, i);
-			READ_COORD(y2, commands, i);
-			
-			DrawLine(x1, y1, x2, y2, color);
-			break;
-		case CMD_FILL_AREA:
-			if (i + COORD_SIZE * 4 + 1 > len)
-				return i;
-			READ_COORD(x, commands, i);
-			READ_COORD(y, commands, i);
-			READ_COORD(w, commands, i);
-			READ_COORD(h, commands, i);
-			
-			FillArea(x, y, w, h, color);
-			break;
-			
-		case CMD_FULL_UPDATE:
-			FullUpdate();
-			client_send_confirm();
-			break;
-		#endif
-		case CMD_SOFT_UPDATE:
-			SoftUpdate();
-			client_send_confirm();
-			break;
-		case CMD_PARTIAL_UPDATE:
-			if (i + COORD_SIZE * 4 + 1 > len)
-				return i;
-			READ_COORD(x, commands, i);
-			READ_COORD(y, commands, i);
-			READ_COORD(w, commands, i);
-			READ_COORD(h, commands, i);
-			
-			PartialUpdate(x, y, w, h);
-			client_send_confirm();
-			break;
-		#ifdef CMD_EXTENTED
-		case CMD_PARTIAL_UPDATE_BW:
-			if (i + COORD_SIZE * 4 + 1 > len)
-				return i;
-			READ_COORD(x, commands, i);
-			READ_COORD(y, commands, i);
-			READ_COORD(w, commands, i);
-			READ_COORD(h, commands, i);
-			
-			PartialUpdateBW(x, y, w, h);
-			client_send_confirm();
-			break;
-		case CMD_DYNAMIC_UPDATE:
-			if (i + COORD_SIZE * 4 + 1 > len)
-				return i;
-			READ_COORD(x, commands, i);
-			READ_COORD(y, commands, i);
-			READ_COORD(w, commands, i);
-			READ_COORD(h, commands, i);
-			
-			DynamicUpdate(x, y, w, h);
-			client_send_confirm();
-			break;
-		case CMD_DYNAMIC_UPDATE_BW:
-			if (i + COORD_SIZE * 4 + 1 > len)
-				return i;
-			READ_COORD(x, commands, i);
-			READ_COORD(y, commands, i);
-			READ_COORD(w, commands, i);
-			READ_COORD(h, commands, i);
-			
-			DynamicUpdateBW(x, y, w, h);
-			client_send_confirm();
-			break;
-		#endif
-		default:
-			show_conn_error("Unsupported command is received");
+				break;
+				
+			#ifdef CMD_EXTENTED
+			case CMD_SET_COLOR:
+				if (i + COLOR_SIZE + 1 > len)
+					return i;
+				READ_COLOR(color, commands, i);
+				break;
+			case CMD_DRAW_PIXEL:
+				if (i + COORD_SIZE * 2 + 1 > len)
+					return i;
+				READ_COORD(x, commands, i);
+				READ_COORD(y, commands, i);
+				
+				DrawPixel(x, y, color);
+				break;
+			case CMD_DRAW_LINE:
+				if (i + COORD_SIZE * 4 + 1 > len)
+					return i;
+				READ_COORD(x1, commands, i);
+				READ_COORD(y1, commands, i);
+				READ_COORD(x2, commands, i);
+				READ_COORD(y2, commands, i);
+				
+				DrawLine(x1, y1, x2, y2, color);
+				break;
+			case CMD_FILL_AREA:
+				if (i + COORD_SIZE * 4 + 1 > len)
+					return i;
+				READ_COORD(x, commands, i);
+				READ_COORD(y, commands, i);
+				READ_COORD(w, commands, i);
+				READ_COORD(h, commands, i);
+				
+				FillArea(x, y, w, h, color);
+				break;
+				
+			case CMD_FULL_UPDATE:
+				FullUpdate();
+				client_send_confirm();
+				break;
+			#endif
+			case CMD_SOFT_UPDATE:
+				SoftUpdate();
+				client_send_confirm();
+				break;
+			case CMD_PARTIAL_UPDATE:
+				if (i + COORD_SIZE * 4 + 1 > len)
+					return i;
+				READ_COORD(x, commands, i);
+				READ_COORD(y, commands, i);
+				READ_COORD(w, commands, i);
+				READ_COORD(h, commands, i);
+				
+				PartialUpdate(x, y, w, h);
+				client_send_confirm();
+				break;
+			#ifdef CMD_EXTENTED
+			case CMD_PARTIAL_UPDATE_BW:
+				if (i + COORD_SIZE * 4 + 1 > len)
+					return i;
+				READ_COORD(x, commands, i);
+				READ_COORD(y, commands, i);
+				READ_COORD(w, commands, i);
+				READ_COORD(h, commands, i);
+				
+				PartialUpdateBW(x, y, w, h);
+				client_send_confirm();
+				break;
+			case CMD_DYNAMIC_UPDATE:
+				if (i + COORD_SIZE * 4 + 1 > len)
+					return i;
+				READ_COORD(x, commands, i);
+				READ_COORD(y, commands, i);
+				READ_COORD(w, commands, i);
+				READ_COORD(h, commands, i);
+				
+				DynamicUpdate(x, y, w, h);
+				client_send_confirm();
+				break;
+			case CMD_DYNAMIC_UPDATE_BW:
+				if (i + COORD_SIZE * 4 + 1 > len)
+					return i;
+				READ_COORD(x, commands, i);
+				READ_COORD(y, commands, i);
+				READ_COORD(w, commands, i);
+				READ_COORD(h, commands, i);
+				
+				DynamicUpdateBW(x, y, w, h);
+				client_send_confirm();
+				break;
+			#endif
+			default:
+				show_conn_error("Unsupported command is received");
 		}
 	}
 	return len;

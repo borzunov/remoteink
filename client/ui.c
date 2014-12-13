@@ -31,13 +31,13 @@ void ui_label_repaint(struct UILabel *label) {
 	
 	int text_left;
 	switch (label->align) {
-	case UI_ALIGN_LEFT:
-	default:
-		text_left = label->left;
-		break;
-	case UI_ALIGN_CENTER:
-		text_left = (label->left + label->right - need_width) / 2;
-		break;
+		case UI_ALIGN_LEFT:
+		default:
+			text_left = label->left;
+			break;
+		case UI_ALIGN_CENTER:
+			text_left = (label->left + label->right - need_width) / 2;
+			break;
 	}
 	DrawString(text_left, label->top, label->text);
 }
@@ -83,13 +83,13 @@ void ui_button_repaint(struct UIButton *button) {
 	
 	int text_left;
 	switch (button->align) {
-	case UI_ALIGN_LEFT:
-	default:
-		text_left = button->left + UI_BUTTON_PADDING;
-		break;
-	case UI_ALIGN_CENTER:
-		text_left = (button->left + button->right - need_width) / 2;
-		break;
+		case UI_ALIGN_LEFT:
+		default:
+			text_left = button->left + UI_BUTTON_PADDING;
+			break;
+		case UI_ALIGN_CENTER:
+			text_left = (button->left + button->right - need_width) / 2;
+			break;
 	}
 	DrawString(text_left, button->top + UI_BUTTON_PADDING, button->text);
 }

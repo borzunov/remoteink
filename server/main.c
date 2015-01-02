@@ -243,6 +243,10 @@ ExcCode server_setup() {
 	memcpy(&serv_addr.sin_addr.s_addr, serv->h_addr, serv->h_length);
 	serv_addr.sin_port = htons(server_port);
 	
+	int optval = 1;
+	size_t optlen = sizeof(int);
+	setsockopt(serv_fd, SOL_SOCKET, SO_REUSEADDR, &optval, optlen);
+	
 	if (bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) < 0)
 		THROW(ERR_SOCK_BIND, server_host, server_port);
 

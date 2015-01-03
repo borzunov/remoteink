@@ -11,21 +11,17 @@ struct WindowContext *contexts_list = NULL;
 struct WindowContext *active_context = NULL;
 int window_tracking_enabled = 1;
 
-void activate_window_context(Window window) {
-	/*window_left = 0;
-	window_top = 0;
-	window_width = screen_width;
-	window_height = screen_height;*/
-	window_get_geometry(window,
-			&window_left, &window_top, &window_width, &window_height);
+ExcCode activate_window_context(xcb_window_t window) {
+	TRY(window_get_geometry(window,
+			&window_left, &window_top, &window_width, &window_height));
 	
 	if (active_context != NULL && active_context->window == window)
-		return;
+		return 0;
 	struct WindowContext *cur = contexts_list;
 	while (cur != NULL) {
 		if (cur->window == window) {
 			active_context = cur;
-			return;
+			return 0;
 		}
 		cur = cur->next;
 	}
@@ -37,6 +33,7 @@ void activate_window_context(Window window) {
 	active_context = cur;
 	
 	reset_position();
+	return 0;
 }
 
 

@@ -24,7 +24,8 @@
 #define ERR_INVALID_BOOL "Boolean parameter \"%s\" should be set to "\
 		"\"True\" or \"False\""
 
-#define ERR_DISPLAY "Can't open X display"
+#define ERR_X_CONNECT "Failed to connect to X server"
+#define ERR_X_REQUEST "Error on request to X server"
 
 
 #endif

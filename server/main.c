@@ -103,16 +103,20 @@ ExcCode parse_arguments(int argc, char *argv[]) {
 Display *display;
 
 void *start_handle_shortcuts(void *arg) {
-	handle_shortcuts(shortcuts);
+	//handle_shortcuts(shortcuts);
 	return NULL;
 }
 
 
-void track_focused_window() {
+ExcCode track_focused_window() {
+	xcb_window_t window;
 	if (window_tracking_enabled) {
-		activate_window_context(window_get_focused());
-	} else
-		activate_window_context(window_get_root());
+		TRY(window_get_focused(&window));
+	} else {
+		TRY(window_get_root(&window));
+	}
+	TRY(activate_window_context(window));
+	return 0;
 }
 
 
@@ -121,47 +125,42 @@ int serv_fd, conn_fd;
 
 int has_stats = 0;
 
-ExcCode send_first_frame(Imlib_Image *image, DATA32 **data) {
-	track_focused_window();
-	*image = screenshot_get(
+ExcCode send_first_frame(unsigned **image_data) {
+	TRY(track_focused_window());
+	TRY(screenshot_get(
 			active_context->frame_left, active_context->frame_top,
-			client_width, client_height);
-	imlib_context_set_image(*image);
-	*data = imlib_image_get_data_for_reading_only();
-	
-	TRY(image_send_all(conn_fd, *data, client_width, client_height));
+			client_width, client_height, image_data));
+	TRY(image_send_all(conn_fd, *image_data, client_width, client_height));
 	return 0;
 }
 
 char conn_check_char = CONN_CHECK;
 
-ExcCode send_next_frame(Imlib_Image *image, DATA32 **data,
+ExcCode send_next_frame(unsigned **image_data,
 		int region_width, int region_height) {
 	// Check whether connection is dead. If so, SIGPIPE will be sent.
 	if (write(conn_fd, &conn_check_char, sizeof (char)) < 0)
 		THROW(ERR_SOCK_WRITE);
 	
 	profiler_start(STAGE_SHOT);   
-	track_focused_window(); 
-	Imlib_Image *next_image = screenshot_get(
+	TRY(track_focused_window());
+	unsigned *next_image_data;
+	TRY(screenshot_get(
 			active_context->frame_left, active_context->frame_top,
-			client_width, client_height);
-	imlib_context_set_image(next_image);
-	DATA32 *next_data = imlib_image_get_data_for_reading_only();
+			client_width, client_height, &next_image_data));
 	profiler_finish(STAGE_SHOT);
 	
 	unsigned i, j;
 	for (i = 0; i < HEIGHT_DIV; i++)
 		for (j = 0; j < WIDTH_DIV; j++)
 			TRY(image_send_diff(
-				conn_fd, *data, next_data,
+				conn_fd, *image_data, next_image_data,
 				client_width, client_height,
 				j * region_width, i * region_height,
 				region_width, region_height
 			));
-	gib_imlib_free_image_and_decache(*image);
-	*image = next_image;
-	*data = next_data;
+	free(*image_data);
+	*image_data = next_image_data;
 
 	traffic_uncompressed += client_width * client_height * 4;
 	has_stats = 1;
@@ -199,16 +198,15 @@ ExcCode client_handshake() {
 #define MIN_FRAME_DURATION ((NSECS_PER_SEC) / (MAX_FPS))
 
 ExcCode client_mainloop() {
-	Imlib_Image image;
-	DATA32 *data;
-	TRY(send_first_frame(&image, &data));
+	unsigned *image_data;
+	TRY(send_first_frame(&image_data));
 	
 	unsigned region_width = client_width / WIDTH_DIV;
 	unsigned region_height = client_height / HEIGHT_DIV;
 	while (handle_client_flag) {
 		long long frame_start_time = get_time_nsec();
 		
-		TRY(send_next_frame(&image, &data, region_width, region_height));
+		TRY(send_next_frame(&image_data, region_width, region_height));
 
 		long long frame_duration = get_time_nsec() - frame_start_time;
 		long long sleep_time = MIN_FRAME_DURATION - frame_duration;

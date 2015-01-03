@@ -1,13 +1,15 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
-#include <X11/Xutil.h>
+#include <xcb/xcb.h>
+
+#include "../common/exceptions.h"
 
 
 extern int screen_width, screen_height, client_width, client_height;
 
 struct WindowContext {
-	Window window;
+	xcb_window_t window;
 	struct WindowContext *next;
 	
 	int frame_left;
@@ -17,7 +19,7 @@ struct WindowContext {
 extern struct WindowContext *active_context;
 extern int window_tracking_enabled;
 
-void activate_window_context(Window window);
+extern ExcCode activate_window_context(xcb_window_t window);
 
 
 void reset_position();

@@ -96,3 +96,9 @@ void move_right_handler() {
 void toogle_window_tracking_handler() {
 	window_tracking_enabled = !window_tracking_enabled;
 }
+
+void adjust_window_size_handler() {
+	window_resize(active_context->window, client_width, client_height);
+	activate_window_context(active_context->window);
+	reset_position();
+}

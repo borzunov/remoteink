@@ -22,12 +22,13 @@ extern int window_tracking_enabled;
 extern ExcCode activate_window_context(xcb_window_t window);
 
 
-void reset_position();
-void move_up_handler();
-void move_down_handler();
-void move_left_handler();
-void move_right_handler();
-void toogle_window_tracking_handler();
+extern void reset_position();
+extern void move_up_handler();
+extern void move_down_handler();
+extern void move_left_handler();
+extern void move_right_handler();
+extern void toogle_window_tracking_handler();
+extern void adjust_window_size_handler();
 
 
 #endif

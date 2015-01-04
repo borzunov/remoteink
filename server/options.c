@@ -58,6 +58,7 @@ const struct HandlerRecord handlers[] = {
 	{"MoveRight", move_right_handler},
 	{"ResetPosition", reset_position},
 	{"ToggleWindowTracking", toogle_window_tracking_handler},
+	{"AdjustWindowSize", adjust_window_size_handler},
 	{NULL, NULL}
 };
 

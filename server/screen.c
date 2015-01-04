@@ -83,7 +83,6 @@ ExcCode get_net_frame_window(xcb_window_t window, xcb_window_t *res) {
 		*res = window;
 		return 0;
 	}
-	printf("xcb_get_property_value_length(get_property_reply) = %d\n", xcb_get_property_value_length(get_property_reply)); //
 	*res = *(xcb_window_t *) xcb_get_property_value(get_property_reply);
 	free(get_property_reply);
 	return 0;
@@ -139,5 +138,70 @@ ExcCode window_get_geometry(xcb_window_t window,
 	*width = reply->width;
 	*height = reply->height;
 	free(reply);
+	return 0;
+}
+
+
+void find_window_by_property(xcb_window_t window, xcb_atom_t property,
+		xcb_window_t *res) {
+	*res = XCB_WINDOW_NONE;
+	
+	xcb_get_property_cookie_t get_property_cookie =
+			xcb_get_property(display, 0, window, property, XCB_ATOM_ANY, 0, 0);
+	xcb_get_property_reply_t *get_property_reply =
+			xcb_get_property_reply(display, get_property_cookie, NULL);
+	if (get_property_reply != NULL) {
+		if (get_property_reply->type != XCB_ATOM_NONE) {
+			*res = window;
+			free(get_property_reply);
+			return;
+		}
+		free(get_property_reply);
+	}
+	
+	xcb_query_tree_cookie_t query_tree_cookie =
+			xcb_query_tree(display, window);
+	xcb_query_tree_reply_t *query_tree_reply =
+			xcb_query_tree_reply(display, query_tree_cookie, NULL);
+	if (query_tree_reply == NULL)
+		return;
+	int length = xcb_query_tree_children_length(query_tree_reply);
+	xcb_window_t *children = xcb_query_tree_children(query_tree_reply);
+	for (int i = 0; i < length; i++) {
+		find_window_by_property(children[i], property, res);
+		if (*res != XCB_WINDOW_NONE)
+			break;
+	}
+	free(query_tree_reply);
+}
+
+ExcCode get_client_window(xcb_window_t window, xcb_window_t *res) {
+	const char *atom_name = "WM_STATE";
+	xcb_intern_atom_cookie_t intern_atom_cookie =
+			xcb_intern_atom(display, 1, strlen(atom_name), atom_name);
+	xcb_intern_atom_reply_t *intern_atom_reply =
+			xcb_intern_atom_reply(display, intern_atom_cookie, NULL);
+	if (intern_atom_reply == NULL) {
+		*res = window;
+		return 0;
+	}
+	xcb_atom_t wm_state = intern_atom_reply->atom;
+	free(intern_atom_reply);
+	
+	find_window_by_property(window, wm_state, res);
+	if (*res == XCB_WINDOW_NONE)
+		*res = window;
+	return 0;
+}
+
+
+ExcCode window_resize(xcb_window_t window, int width, int height) {
+	TRY(find_toplevel_window(window, &window));
+	TRY(get_client_window(window, &window));
+	uint32_t values[2] = {width, height};
+    xcb_configure_window(display, window,
+			XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, values);
+    xcb_flush(display);
+    // FIXME: handle errors here and handle it in caller
 	return 0;
 }

@@ -68,8 +68,10 @@ ExcCode parse_hotkey(const char *str, struct Hotkey *res) {
 			word_begin = i + 1;
 		}
 		
-	res->keycodes = xcb_key_symbols_get_keycode(key_symbols_table,
-			XStringToKeysym(str + word_begin));
+	KeySym keysym = XStringToKeysym(str + word_begin);
+	if (keysym == NoSymbol)
+		THROW(ERR_SHORTCUT_UNKNOWN_KEY, str + word_begin, str);
+	res->keycodes = xcb_key_symbols_get_keycode(key_symbols_table, keysym);
 	if (res->keycodes == NULL)
 		THROW(ERR_SHORTCUT_UNKNOWN_KEY, str + word_begin, str);
 	return 0;
@@ -80,7 +82,7 @@ ExcCode parse_hotkey(const char *str, struct Hotkey *res) {
 #define EXTRA_MODIFIERS (XCB_MOD_MASK_LOCK | \
 		XCB_MOD_MASK_2 | XCB_MOD_MASK_3 | XCB_MOD_MASK_4 | XCB_MOD_MASK_5)
 
-void grab_keycode(uint8_t owner_events,
+ExcCode grab_keycode(uint8_t owner_events,
 		xcb_keycode_t keycode, unsigned modifiers,
 		Window grab_window, uint8_t pointer_mode, uint8_t keyboard_mode) {
 	unsigned rem_modifiers = EXTRA_MODIFIERS & ~modifiers;
@@ -88,27 +90,31 @@ void grab_keycode(uint8_t owner_events,
 	// required modifiers and all variants of combinations of extra modifiers
 	for (unsigned submask = rem_modifiers; ;
 			submask = (submask - 1) & rem_modifiers) {
-		xcb_grab_key(display, owner_events, grab_window,
+		xcb_void_cookie_t cookie = xcb_grab_key_checked(display,
+				owner_events, grab_window,
 				modifiers | submask, keycode, pointer_mode, keyboard_mode);
-		// FIXME: handle errors?!
+		if (xcb_request_check(display, cookie) != NULL)
+			THROW(ERR_X_REQUEST);
 		if (!submask)
 			break;
 	}
+	return 0;
 }
 
-void grab_hotkey(const struct Hotkey *hotkey) {
+ExcCode grab_hotkey(const struct Hotkey *hotkey) {
 	for (int i = 0; hotkey->keycodes[i] != XCB_NO_SYMBOL; i++)
-		grab_keycode(1, hotkey->keycodes[i], hotkey->modifiers, root,
-				 XCB_GRAB_MODE_ASYNC,  XCB_GRAB_MODE_ASYNC);
+		TRY(grab_keycode(1, hotkey->keycodes[i], hotkey->modifiers, root,
+				 XCB_GRAB_MODE_ASYNC,  XCB_GRAB_MODE_ASYNC));
+	return 0;
 }
 
 
-void handle_shortcuts(const struct Shortcut shortcuts[]) {
+ExcCode handle_shortcuts(const struct Shortcut shortcuts[]) {
 	for (int i = 0; shortcuts[i].handler != NULL; i++)
-		grab_hotkey(&shortcuts[i].hotkey);
+		TRY(grab_hotkey(&shortcuts[i].hotkey));
 	
 	xcb_generic_event_t *event;
-	while ((event = xcb_wait_for_event(display))) {
+	while ((event = xcb_wait_for_event(display)) != NULL) {
 		if ((event->response_type & ~0x80) == XCB_KEY_RELEASE) {
 			xcb_key_release_event_t *key_release_event =
 					(xcb_key_release_event_t *) event;
@@ -127,5 +133,5 @@ void handle_shortcuts(const struct Shortcut shortcuts[]) {
 		}
 		free(event);
 	}
-	// FIXME: an error occured, throw here?!
+	THROW(ERR_X_REQUEST);
 }

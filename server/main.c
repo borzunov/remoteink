@@ -103,7 +103,8 @@ ExcCode parse_arguments(int argc, char *argv[]) {
 Display *display;
 
 void *start_handle_shortcuts(void *arg) {
-	handle_shortcuts(shortcuts);
+	if (handle_shortcuts(shortcuts))
+		show_error(exc_message, 0);
 	return NULL;
 }
 

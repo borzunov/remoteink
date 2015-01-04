@@ -18,7 +18,7 @@ struct Shortcut {
 	void (*handler)();
 };
 
-extern void handle_shortcuts(const struct Shortcut shortcuts[]);
+extern ExcCode handle_shortcuts(const struct Shortcut shortcuts[]);
 
 
 #endif

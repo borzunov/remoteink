@@ -55,40 +55,43 @@ ExcCode screenshot_get(int x, int y, int width, int height,
 }
 
 
-ExcCode get_net_frame_window(xcb_window_t window, xcb_window_t *res) {
-	const char *atom_name = "_NET_FRAME_WINDOW";
-	xcb_intern_atom_cookie_t intern_atom_cookie =
-			xcb_intern_atom(display, 1, strlen(atom_name), atom_name);
-	xcb_intern_atom_reply_t *intern_atom_reply =
-			xcb_intern_atom_reply(display, intern_atom_cookie, NULL);
-	if (intern_atom_reply == NULL) {
-		*res = window;
-		return 0;
-	}
-	xcb_atom_t net_frame = intern_atom_reply->atom;
-	free(intern_atom_reply);
-	
-	xcb_get_property_cookie_t get_property_cookie =
-			xcb_get_property(display, 0, window,
-			net_frame, XCB_ATOM_ANY, 0, 1);
-	xcb_get_property_reply_t *get_property_reply =
-			xcb_get_property_reply(display, get_property_cookie, NULL);
-	if (
-		get_property_reply == NULL ||
-		get_property_reply->type == XCB_ATOM_NONE ||
-		get_property_reply->format != sizeof (xcb_window_t) ||
-		xcb_get_property_value_length(get_property_reply) !=
-				sizeof (xcb_window_t) / 8
-	) {
-		*res = window;
-		return 0;
-	}
-	*res = *(xcb_window_t *) xcb_get_property_value(get_property_reply);
-	free(get_property_reply);
+ExcCode create_atom(const char *name, uint8_t only_if_exists,
+		xcb_atom_t *res) {
+	xcb_intern_atom_cookie_t cookie =
+			xcb_intern_atom(display, only_if_exists, strlen(name), name);
+	xcb_intern_atom_reply_t *reply =
+			xcb_intern_atom_reply(display, cookie, NULL);
+	if (reply == NULL)
+		THROW(ERR_X_REQUEST);
+	*res = reply->atom;
+	free(reply);
 	return 0;
 }
 
-ExcCode find_toplevel_window(xcb_window_t window, xcb_window_t *res) {
+void get_net_frame_window(xcb_window_t window, xcb_window_t *res) {
+	xcb_atom_t net_frame_window;
+	if (create_atom("_NET_FRAME_WINDOW", 1, &net_frame_window)) {
+		*res = window;
+		return;
+	}
+	xcb_get_property_cookie_t cookie =
+			xcb_get_property(display, 0, window,
+			net_frame_window, XCB_ATOM_ANY, 0, 1);
+	xcb_get_property_reply_t *reply =
+			xcb_get_property_reply(display, cookie, NULL);
+	if (
+		reply == NULL ||
+		reply->type == XCB_ATOM_NONE || reply->format != 32 ||
+		xcb_get_property_value_length(reply) != sizeof (xcb_window_t)
+	) {
+		*res = window;
+		return;
+	}
+	*res = *(xcb_window_t *) xcb_get_property_value(reply);
+	free(reply);
+}
+
+void find_toplevel_window(xcb_window_t window, xcb_window_t *res) {
 	for (;;) {
 		xcb_query_tree_cookie_t cookie = xcb_query_tree(display, window);
 		xcb_query_tree_reply_t *reply =
@@ -103,7 +106,6 @@ ExcCode find_toplevel_window(xcb_window_t window, xcb_window_t *res) {
 		free(reply);
 	}
 	*res = window;
-	return 0;
 }
 
 
@@ -142,8 +144,8 @@ ExcCode window_get_real_geometry(xcb_window_t window,
 
 ExcCode window_get_geometry(xcb_window_t window,
 		int *left, int *top, int *width, int *height) {
-	TRY(find_toplevel_window(window, &window));
-	TRY(get_net_frame_window(window, &window));
+	find_toplevel_window(window, &window);
+	get_net_frame_window(window, &window);
 	TRY(window_get_real_geometry(window, left, top, width, height));
 	return 0;
 }
@@ -182,45 +184,71 @@ void find_window_by_property(xcb_window_t window, xcb_atom_t property,
 	free(query_tree_reply);
 }
 
-ExcCode get_client_window(xcb_window_t window, xcb_window_t *res) {
-	const char *atom_name = "WM_STATE";
-	xcb_intern_atom_cookie_t intern_atom_cookie =
-			xcb_intern_atom(display, 1, strlen(atom_name), atom_name);
-	xcb_intern_atom_reply_t *intern_atom_reply =
-			xcb_intern_atom_reply(display, intern_atom_cookie, NULL);
-	if (intern_atom_reply == NULL) {
+void get_client_window(xcb_window_t window, xcb_window_t *res) {
+	xcb_atom_t wm_state;
+	if (create_atom("WM_STATE", 1, &wm_state)) {
 		*res = window;
-		return 0;
+		return;
 	}
-	xcb_atom_t wm_state = intern_atom_reply->atom;
-	free(intern_atom_reply);
-	
 	find_window_by_property(window, wm_state, res);
 	if (*res == XCB_WINDOW_NONE)
 		*res = window;
+}
+
+ExcCode window_unmaximize(xcb_window_t window) {
+	xcb_atom_t net_wm_state,
+			net_wm_state_maximized_horz, net_wm_state_maximized_vert;
+	TRY(create_atom("_NET_WM_STATE", 0, &net_wm_state));
+	TRY(create_atom("_NET_WM_STATE_MAXIMIZED_HORZ", 0,
+			&net_wm_state_maximized_horz));
+	TRY(create_atom("_NET_WM_STATE_MAXIMIZED_VERT", 0,
+			&net_wm_state_maximized_vert));
+	xcb_client_message_event_t event;
+	event.response_type = XCB_CLIENT_MESSAGE;
+	event.format = 32;
+	event.sequence = 0;
+	event.window = window;
+	event.type = net_wm_state;
+	event.data.data32[0] = 0; // 0 - disable, 1 - enable, 2 - toogle
+	event.data.data32[1] = net_wm_state_maximized_horz;
+	event.data.data32[2] = net_wm_state_maximized_vert;
+	event.data.data32[3] = 0;
+	event.data.data32[4] = 0;
+	xcb_void_cookie_t cookie = xcb_send_event_checked(display, 0, root,
+			XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY |
+			XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT,
+			(const char*) &event);
+	if (xcb_request_check(display, cookie) != NULL)
+		THROW(ERR_X_REQUEST);
+	if (xcb_flush(display) <= 0)
+		THROW(ERR_X_REQUEST);
 	return 0;
 }
 
 
 ExcCode window_resize(xcb_window_t window, int width, int height) {
+	xcb_window_t client_window;
+	find_toplevel_window(window, &client_window);
+	get_client_window(client_window, &client_window);
+	
+	TRY(window_unmaximize(client_window));
+	
 	int coord, prev_width, prev_height;
-	TRY(window_get_geometry(
-			window, &coord, &coord, &prev_width, &prev_height));
-	
-	TRY(find_toplevel_window(window, &window));
-	TRY(get_client_window(window, &window));
-	
+	TRY(window_get_geometry(window, &coord, &coord,
+			&prev_width, &prev_height));
 	int prev_client_width, prev_client_height;
-	TRY(window_get_real_geometry(
-			window, &coord, &coord, &prev_client_width, &prev_client_height));
-	
+	TRY(window_get_real_geometry(client_window, &coord, &coord,
+			&prev_client_width, &prev_client_height));
 	uint32_t values[2] = {
 		width - (prev_width - prev_client_width),
 		height - (prev_height - prev_client_height)
 	};
-    xcb_configure_window(display, window,
-			XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, values);
-    xcb_flush(display);
-    // FIXME: handle errors here and handle it in caller
+    xcb_void_cookie_t cookie = xcb_configure_window_checked(display,
+			client_window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
+			values);
+	if (xcb_request_check(display, cookie) != NULL)
+		THROW(ERR_X_REQUEST);
+    if (xcb_flush(display) <= 0)
+		THROW(ERR_X_REQUEST);
 	return 0;
 }

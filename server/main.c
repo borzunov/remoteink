@@ -108,15 +108,11 @@ void *start_handle_shortcuts(void *arg) {
 }
 
 
-ExcCode track_focused_window() {
+void track_focused_window() {
 	xcb_window_t window;
-	if (window_tracking_enabled) {
-		TRY(window_get_focused(&window));
-	} else {
-		TRY(window_get_root(&window));
-	}
-	TRY(activate_window_context(window));
-	return 0;
+	if (!window_tracking_enabled || window_get_focused(&window))
+		window_get_root(&window);
+	activate_window_context(window);
 }
 
 
@@ -126,7 +122,7 @@ int serv_fd, conn_fd;
 int has_stats = 0;
 
 ExcCode send_first_frame(unsigned **image_data) {
-	TRY(track_focused_window());
+	track_focused_window();
 	TRY(screenshot_get(
 			active_context->frame_left, active_context->frame_top,
 			client_width, client_height, image_data));
@@ -143,7 +139,7 @@ ExcCode send_next_frame(unsigned **image_data,
 		THROW(ERR_SOCK_WRITE);
 	
 	profiler_start(STAGE_SHOT);   
-	TRY(track_focused_window());
+	track_focused_window();
 	unsigned *next_image_data;
 	TRY(screenshot_get(
 			active_context->frame_left, active_context->frame_top,

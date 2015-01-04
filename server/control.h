@@ -19,7 +19,7 @@ struct WindowContext {
 extern struct WindowContext *active_context;
 extern int window_tracking_enabled;
 
-extern ExcCode activate_window_context(xcb_window_t window);
+extern void activate_window_context(xcb_window_t window);
 
 
 extern void reset_position();

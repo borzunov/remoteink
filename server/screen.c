@@ -107,26 +107,25 @@ ExcCode find_toplevel_window(xcb_window_t window, xcb_window_t *res) {
 }
 
 
-ExcCode window_get_root(xcb_window_t *res) {
+void window_get_root(xcb_window_t *res) {
 	*res = root;
-	return 0;
 }
 
 ExcCode window_get_focused(xcb_window_t *res) {
 	xcb_get_input_focus_cookie_t cookie = xcb_get_input_focus(display);
 	xcb_get_input_focus_reply_t *reply =
 			xcb_get_input_focus_reply(display, cookie, NULL);
-	if (reply == NULL)
-		THROW(ERR_X_REQUEST);
+	if (reply == NULL) {
+		*res = root;
+		return 0;
+	}
 	*res = reply->focus;
 	free(reply);
 	return 0;
 }
 
-ExcCode window_get_geometry(xcb_window_t window,
+ExcCode window_get_real_geometry(xcb_window_t window,
 		int *left, int *top, int *width, int *height) {
-	TRY(find_toplevel_window(window, &window));
-	TRY(get_net_frame_window(window, &window));
 	xcb_get_geometry_cookie_t cookie =
 			xcb_get_geometry(display, window);
 	xcb_get_geometry_reply_t *reply =
@@ -138,6 +137,14 @@ ExcCode window_get_geometry(xcb_window_t window,
 	*width = reply->width;
 	*height = reply->height;
 	free(reply);
+	return 0;
+}
+
+ExcCode window_get_geometry(xcb_window_t window,
+		int *left, int *top, int *width, int *height) {
+	TRY(find_toplevel_window(window, &window));
+	TRY(get_net_frame_window(window, &window));
+	TRY(window_get_real_geometry(window, left, top, width, height));
 	return 0;
 }
 
@@ -196,9 +203,21 @@ ExcCode get_client_window(xcb_window_t window, xcb_window_t *res) {
 
 
 ExcCode window_resize(xcb_window_t window, int width, int height) {
+	int coord, prev_width, prev_height;
+	TRY(window_get_geometry(
+			window, &coord, &coord, &prev_width, &prev_height));
+	
 	TRY(find_toplevel_window(window, &window));
 	TRY(get_client_window(window, &window));
-	uint32_t values[2] = {width, height};
+	
+	int prev_client_width, prev_client_height;
+	TRY(window_get_real_geometry(
+			window, &coord, &coord, &prev_client_width, &prev_client_height));
+	
+	uint32_t values[2] = {
+		width - (prev_width - prev_client_width),
+		height - (prev_height - prev_client_height)
+	};
     xcb_configure_window(display, window,
 			XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, values);
     xcb_flush(display);

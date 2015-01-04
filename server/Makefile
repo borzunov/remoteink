@@ -7,7 +7,7 @@ EXECUTABLE=$(OBJDIR)/inkmonitor-server
 CC=gcc
 CFLAGS=-std=gnu99 -pedantic -Wall -O3
 LDFLAGS=
-LIBS=-lpthread -lrt -lX11 -lxcb
+LIBS=-lpthread -lrt -lX11 -lxcb -lxcb-keysyms
 
 all: $(EXECUTABLE)
 

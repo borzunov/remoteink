@@ -53,7 +53,7 @@ char config_filename[CONFIG_FILENAME_SIZE];
 void show_version() {
 	printf(
 		"Server for tool for using E-Ink reader as computer monitor\n"
-		"Copyright (c) 2013-2014 Alexander Borzunov\n"
+		"Copyright (c) 2013-2015 Alexander Borzunov\n"
 	);
 }
 
@@ -103,7 +103,7 @@ ExcCode parse_arguments(int argc, char *argv[]) {
 Display *display;
 
 void *start_handle_shortcuts(void *arg) {
-	//handle_shortcuts(shortcuts);
+	handle_shortcuts(shortcuts);
 	return NULL;
 }
 

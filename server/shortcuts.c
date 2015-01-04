@@ -1,18 +1,29 @@
 #include "../common/exceptions.h"
 #include "../common/messages.h"
+#include "screen.h"
 #include "shortcuts.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <xcb/xcb.h>
-
+#include <X11/Xutil.h>
+#include <xcb/xcb_keysyms.h>
 
 xcb_connection_t *display;
+xcb_key_symbols_t *key_symbols_table;
+xcb_window_t root;
 
 ExcCode shortcuts_init() {
-	display = xcb_connect(NULL, NULL);
+	int default_screen_no;
+	display = xcb_connect(NULL, &default_screen_no);
 	if (xcb_connection_has_error(display))
 		THROW(ERR_X_CONNECT);
+	xcb_screen_t *screen;
+	TRY(screen_of_display(display, default_screen_no, &screen));
+	root = screen->root;
+	key_symbols_table = xcb_key_symbols_alloc(display);
+	if (key_symbols_table == NULL)
+		THROW(ERR_X_REQUEST);
 	return 0;
 }
 
@@ -38,7 +49,7 @@ struct ModifierRecord modifier_records[] = {
 #define ERR_SHORTCUT_UNKNOWN_KEY "Unknown key \"%s\" in shortcut \"%s\""
 
 ExcCode parse_hotkey(const char *str, struct Hotkey *res) {
-	/*int word_begin = 0;
+	int word_begin = 0;
 	res->modifiers = 0;
 	int i;
 	for (i = 0; str[i]; i++)
@@ -57,60 +68,64 @@ ExcCode parse_hotkey(const char *str, struct Hotkey *res) {
 			word_begin = i + 1;
 		}
 		
-	res->keycode = XKeysymToKeycode(
-			display, XStringToKeysym(str + word_begin));
-	if (res->keycode == NoSymbol)
-		THROW(ERR_SHORTCUT_UNKNOWN_KEY, str + word_begin, str);*/
+	res->keycodes = xcb_key_symbols_get_keycode(key_symbols_table,
+			XStringToKeysym(str + word_begin));
+	if (res->keycodes == NULL)
+		THROW(ERR_SHORTCUT_UNKNOWN_KEY, str + word_begin, str);
 	return 0;
 }
 
 
 // Modifiers that can be set in addition to required
-#define EXTRA_MODIFIERS (XCB_MOD_MASK_LOCK, \
-		XCB_MOD_MASK_2, XCB_MOD_MASK_3, XCB_MOD_MASK_4, XCB_MOD_MASK_5)
+#define EXTRA_MODIFIERS (XCB_MOD_MASK_LOCK | \
+		XCB_MOD_MASK_2 | XCB_MOD_MASK_3 | XCB_MOD_MASK_4 | XCB_MOD_MASK_5)
 
-/*void grab_key(int keycode, unsigned modifiers,
-		Window grab_window, Bool owner_events, int pointer_mode,
-		int keyboard_mode) {
+void grab_keycode(uint8_t owner_events,
+		xcb_keycode_t keycode, unsigned modifiers,
+		Window grab_window, uint8_t pointer_mode, uint8_t keyboard_mode) {
 	unsigned rem_modifiers = EXTRA_MODIFIERS & ~modifiers;
 	// Iterate through all submasks of rem_modifiers and grab key with
 	// required modifiers and all variants of combinations of extra modifiers
 	for (unsigned submask = rem_modifiers; ;
 			submask = (submask - 1) & rem_modifiers) {
-		XGrabKey(display, keycode, modifiers | submask,
-				grab_window, owner_events, pointer_mode, keyboard_mode);
-		
+		xcb_grab_key(display, owner_events, grab_window,
+				modifiers | submask, keycode, pointer_mode, keyboard_mode);
+		// FIXME: handle errors?!
 		if (!submask)
 			break;
 	}
-}*/
+}
+
+void grab_hotkey(const struct Hotkey *hotkey) {
+	for (int i = 0; hotkey->keycodes[i] != XCB_NO_SYMBOL; i++)
+		grab_keycode(1, hotkey->keycodes[i], hotkey->modifiers, root,
+				 XCB_GRAB_MODE_ASYNC,  XCB_GRAB_MODE_ASYNC);
+}
 
 
 void handle_shortcuts(const struct Shortcut shortcuts[]) {
-	/*Window root = DefaultRootWindow(display);
-	for (int i = 0; shortcuts[i].handler != NULL; i++) {
-		grab_key(shortcuts[i].hotkey.keycode, shortcuts[i].hotkey.modifiers,
-				root, 1, GrabModeAsync, GrabModeAsync);
-	}
-
-	for (;;) {
-		XEvent event;
-		XNextEvent(display, &event);
-		if (event.type != KeyRelease)
-			continue;
-
-		for (int i = 0; shortcuts[i].handler != NULL; i++) {
-			unsigned modifiers = shortcuts[i].hotkey.modifiers;
-			if (
-				event.xkey.keycode == shortcuts[i].hotkey.keycode &&
-				(event.xkey.state & modifiers) == modifiers
-			)
-				shortcuts[i].handler();
-		}
-	}
+	for (int i = 0; shortcuts[i].handler != NULL; i++)
+		grab_hotkey(&shortcuts[i].hotkey);
 	
-	// FIXME: Correctly close grabs
-	//XAllowEvents(display, AsyncKeyboard, CurrentTime);
-	//XUngrabKey(display, key, modifiers, root);
-	//XSync(display, 0);*/
+	xcb_generic_event_t *event;
+	while ((event = xcb_wait_for_event(display))) {
+		if ((event->response_type & ~0x80) == XCB_KEY_RELEASE) {
+			xcb_key_release_event_t *key_release_event =
+					(xcb_key_release_event_t *) event;
+			for (int i = 0; shortcuts[i].handler != NULL; i++) {
+				unsigned modifiers = shortcuts[i].hotkey.modifiers;
+				if (modifiers != key_release_event->state)
+					continue;
+				for (int j = 0;
+						shortcuts[i].hotkey.keycodes[j] != XCB_NO_SYMBOL; j++)
+					if (key_release_event->detail ==
+							shortcuts[i].hotkey.keycodes[j]) {
+						shortcuts[i].handler();
+						break;
+					}
+			}
+		}
+		free(event);
+	}
+	// FIXME: an error occured, throw here?!
 }

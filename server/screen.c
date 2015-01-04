@@ -5,10 +5,6 @@
 #include <string.h>
 
 
-xcb_connection_t *display;
-xcb_screen_t *screen;
-xcb_window_t root = { 0 };
-
 ExcCode screen_of_display(xcb_connection_t *c, int screen,
 		xcb_screen_t **res) {
 	xcb_screen_iterator_t iter = xcb_setup_roots_iterator(xcb_get_setup(c));
@@ -21,6 +17,11 @@ ExcCode screen_of_display(xcb_connection_t *c, int screen,
 	}
 	THROW(ERR_X_REQUEST);
 }
+
+
+xcb_connection_t *display;
+xcb_screen_t *screen;
+xcb_window_t root;
 
 ExcCode screenshot_init(int *screen_width, int *screen_height) {
 	int default_screen_no;

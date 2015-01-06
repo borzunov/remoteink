@@ -26,17 +26,6 @@
 #define ERR_CLIENT_VERSION "Incompatible client version"
 
 
-#define MAX_FPS 20
-
-// Screen regions may be processed separately. This is useful,
-// for example, in the word processors, when at typing we have only two small
-// updates in the middle of the screen (text) and in the bottom of the screen
-// (the counters of lines and characters). Then it will be updated not one big
-// rectangle of the screen, but two small ones.
-#define WIDTH_DIV 1
-#define HEIGHT_DIV 3
-
-
 void show_error(const char *error, int is_fatal) {
 	if (is_fatal) {
 		fprintf(stderr, "[-] Fatal Error: %s\n", error);
@@ -148,8 +137,8 @@ ExcCode send_next_frame(unsigned **image_data,
 	profiler_finish(STAGE_SHOT);
 	
 	unsigned i, j;
-	for (i = 0; i < HEIGHT_DIV; i++)
-		for (j = 0; j < WIDTH_DIV; j++)
+	for (i = 0; i < height_divisor; i++)
+		for (j = 0; j < width_divisor; j++)
 			TRY(image_send_diff(
 				conn_fd, *image_data, next_image_data,
 				client_width, client_height,
@@ -192,21 +181,19 @@ ExcCode client_handshake() {
 	return 0;
 }
 
-#define MIN_FRAME_DURATION ((NSECS_PER_SEC) / (MAX_FPS))
-
 ExcCode client_mainloop() {
 	unsigned *image_data;
 	TRY(send_first_frame(&image_data));
 	
-	unsigned region_width = client_width / WIDTH_DIV;
-	unsigned region_height = client_height / HEIGHT_DIV;
+	unsigned region_width = client_width / width_divisor;
+	unsigned region_height = client_height / height_divisor;
 	while (handle_client_flag) {
 		long long frame_start_time = get_time_nsec();
 		
 		TRY(send_next_frame(&image_data, region_width, region_height));
 
 		long long frame_duration = get_time_nsec() - frame_start_time;
-		long long sleep_time = MIN_FRAME_DURATION - frame_duration;
+		long long sleep_time = NSECS_PER_SEC / max_fps - frame_duration;
 		if (sleep_time > 0)
 			usleep(sleep_time / NSECS_PER_MSEC);
 		else

@@ -24,7 +24,7 @@ ExcCode save_server_host(const char *key, char *buffer, int buffer_size) {
 }
 
 ExcCode load_server_port(const char *key, const char *value) {
-	TRY(parse_port(value, &server_port));
+	TRY(parse_int(key, value, PORT_MIN, PORT_MAX, &server_port));
 	return 0;
 }
 

@@ -20,7 +20,8 @@
 
 #define PORT_MIN 1
 #define PORT_MAX 49151
-#define ERR_INVALID_PORT "Port number should be in range from %d to %d"
+#define ERR_INVALID_INT "Parameter \"%s\" should be an integer "\
+		"in range from %d to %d"
 #define ERR_INVALID_BOOL "Boolean parameter \"%s\" should be set to "\
 		"\"True\" or \"False\""
 

@@ -1,4 +1,5 @@
 #include "exceptions.h"
+#include "ini_parser.h"
 #include "messages.h"
 #include "utils.h"
 
@@ -38,13 +39,25 @@ void get_default_config_path(const char *name, char *buffer, int buffer_size) {
 }
 
 
-ExcCode parse_port(const char *str, int *res) {
+ExcCode parse_int(const char *key, const char *value, int min, int max,
+		int *res) {
 	int number;
 	if (!(
-		sscanf(str, "%d", &number) == 1 &&
-		PORT_MIN <= number && number <= PORT_MAX
+		sscanf(value, "%d", &number) == 1 &&
+		min <= number && number <= max
 	))
-		THROW(ERR_INVALID_PORT, PORT_MIN, PORT_MAX);
+		THROW(ERR_INVALID_INT, key, min, max);
 	*res = number;
+	return 0;
+}
+
+ExcCode parse_bool(const char *key, const char *value, int *res) {
+	if (!strcasecmp(value, INI_VALUE_FALSE))
+		*res = 0;
+	else
+	if (!strcasecmp(value, INI_VALUE_TRUE))
+		*res = 1;
+	else
+		THROW(ERR_INVALID_BOOL, key);
 	return 0;
 }

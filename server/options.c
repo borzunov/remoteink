@@ -19,7 +19,36 @@ ExcCode load_server_host(const char *key, const char *value) {
 }
 
 ExcCode load_server_port(const char *key, const char *value) {
-	TRY(parse_port(value, &server_port));
+	TRY(parse_int(key, value, PORT_MIN, PORT_MAX, &server_port));
+	return 0;
+}
+
+
+int max_fps = 20;
+
+ExcCode load_max_fps(const char *key, const char *value) {
+	TRY(parse_int(key, value, 1, 100, &max_fps));
+	return 0;
+}
+
+#define MAX_DIM_DIVISOR 5
+int width_divisor, height_divisor;
+
+ExcCode load_width_divisor(const char *key, const char *value) {
+	TRY(parse_int(key, value, 1, MAX_DIM_DIVISOR, &width_divisor));
+	return 0;
+}
+
+ExcCode load_height_divisor(const char *key, const char *value) {
+	TRY(parse_int(key, value, 1, MAX_DIM_DIVISOR, &height_divisor));
+	return 0;
+}
+
+
+int window_tracking_enabled = 1;
+
+ExcCode load_window_tracking_enabled(const char *key, const char *value) {
+	TRY(parse_bool(key, value, &window_tracking_enabled));
 	return 0;
 }
 
@@ -29,13 +58,7 @@ int stats_enabled = 0;
 char stats_filename[STATS_FILENAME_SIZE] = "stats.log";
 
 ExcCode load_stats_enabled(const char *key, const char *value) {
-	if (!strcasecmp(value, INI_VALUE_FALSE))
-		stats_enabled = 0;
-	else
-	if (!strcasecmp(value, INI_VALUE_TRUE))
-		stats_enabled = 1;
-	else
-		THROW(ERR_INVALID_BOOL, key);
+	TRY(parse_bool(key, value, &stats_enabled));
 	return 0;
 }
 
@@ -99,6 +122,16 @@ const struct IniSection sections[] = {
 	{"Server", (struct IniParam []) {
 		{"Host", load_server_host, NULL},
 		{"Port", load_server_port, NULL},
+		{NULL, NULL, NULL}
+	}},
+	{"Monitor", (struct IniParam []) {
+		{"MaxFPS", load_max_fps, NULL},
+		{"WidthDivisor", load_width_divisor, NULL},
+		{"HeightDivisor", load_height_divisor, NULL},
+		{NULL, NULL, NULL}
+	}},
+	{"Defaults", (struct IniParam []) {
+		{"WindowTrackingEnabled", load_window_tracking_enabled, NULL},
 		{NULL, NULL, NULL}
 	}},
 	{"Stats", (struct IniParam []) {

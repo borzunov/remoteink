@@ -52,9 +52,11 @@ char server_port_buffer[SERVER_PORT_BUFFER_SIZE];
 
 void change_port_handler(char *buffer) {
 	int incorrect = 0;
-	if (buffer && parse_port(server_port_buffer, &server_port)) {
+	if (buffer && parse_int(
+			"Port", server_port_buffer, PORT_MIN, PORT_MAX, &server_port)) {
 		incorrect = 1;
-		snprintf(server_port_buffer, SERVER_PORT_BUFFER_SIZE, "%d", server_port);
+		snprintf(server_port_buffer, SERVER_PORT_BUFFER_SIZE,
+				"%d", server_port);
 	}
 	change_option_handler(buffer);
 	if (incorrect)

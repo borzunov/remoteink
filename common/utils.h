@@ -2,10 +2,13 @@
 #define UTILS_H
 
 
-void get_default_config_path(const char *name, char *buffer, int buffer_size);
+extern void get_default_config_path(const char *name,
+		char *buffer, int buffer_size);
 
 
-ExcCode parse_port(const char *str, int *res);
+extern ExcCode parse_int(const char *key, const char *value, int min, int max,
+		int *res);
+extern ExcCode parse_bool(const char *key, const char *value, int *res);
 
 
 #endif

@@ -9,7 +9,6 @@ int screen_width, screen_height, client_width, client_height,
 struct WindowContext *contexts_list = NULL;
 
 struct WindowContext *active_context = NULL;
-int window_tracking_enabled = 1;
 
 void activate_window_context(xcb_window_t window) {
 	if (window_get_geometry(window,

@@ -8,6 +8,10 @@
 extern char server_host[];
 extern int server_port;
 
+extern int max_fps, width_divisor, height_divisor;
+
+extern int window_tracking_enabled;
+
 extern int stats_enabled;
 extern char stats_filename[];
 

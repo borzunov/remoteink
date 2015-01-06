@@ -37,7 +37,9 @@ void profiler_finish(int stage) {
 	stages_calls[stage]++;
 }
 
-#define BYTES_PER_MB (1024LL * 1024)
+#define BITS_PER_BYTE 8
+#define BYTES_PER_MIB (1024LL * 1024)
+#define BITS_PER_MBIT (1000LL * 1000)
 
 ExcCode profiler_save(const char *filename) {
 	FILE *f = fopen(filename, "w");
@@ -46,16 +48,17 @@ ExcCode profiler_save(const char *filename) {
 	#undef FINALLY
 	#define FINALLY fclose(f);
 	
+	double speed = ((double) traffic_diffs * BITS_PER_BYTE / BITS_PER_MBIT) /
+				(stages_sum[STAGE_TRANSFER] / NSECS_PER_SEC);
 	if (fprintf(f,
 		"Diffs Traffic:\n"
-		"    Speed: %.1lf Mb/s\n"
-		"    Real: %.1lf Mb\n"
-		"    Uncompressed: %.1lf Mb\n"
+		"    Speed: %.1lf Mbit/s\n"
+		"    Real: %.1lf MiB\n"
+		"    Uncompressed: %.1lf MiB\n"
 		"    Rate: %.1lf%%\n",
-		(traffic_diffs / BYTES_PER_MB) /
-				(stages_sum[STAGE_TRANSFER] / NSECS_PER_SEC),
-		(double) traffic_diffs / BYTES_PER_MB,
-		(double) traffic_uncompressed / BYTES_PER_MB,
+		speed,
+		(double) traffic_diffs / BYTES_PER_MIB,
+		(double) traffic_uncompressed / BYTES_PER_MIB,
 		(double) traffic_diffs / traffic_uncompressed * 100.0
 	) < 0)
 		THROW(ERR_FILE_WRITE, filename);

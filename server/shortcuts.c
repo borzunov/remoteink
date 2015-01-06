@@ -1,5 +1,6 @@
 #include "../common/exceptions.h"
 #include "../common/messages.h"
+#include "control.h"
 #include "screen.h"
 #include "shortcuts.h"
 
@@ -115,7 +116,8 @@ ExcCode handle_shortcuts(const struct Shortcut shortcuts[]) {
 	
 	xcb_generic_event_t *event;
 	while ((event = xcb_wait_for_event(display)) != NULL) {
-		if ((event->response_type & ~0x80) == XCB_KEY_RELEASE) {
+		if ((event->response_type & ~0x80) == XCB_KEY_RELEASE &&
+				active_context != NULL) {
 			xcb_key_release_event_t *key_release_event =
 					(xcb_key_release_event_t *) event;
 			for (int i = 0; shortcuts[i].handler != NULL; i++) {

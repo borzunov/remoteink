@@ -6,11 +6,13 @@
 #include <string.h>
 
 #define ERR_INI_PARAM_BEFORE_SECTION "Can't define parameter \"%s\" \
-before section definition at \"%s\""
-#define ERR_INI_UNKNOWN_SECTION "Unknown section \"%s\" at \"%s\""
-#define ERR_INI_UNKNOWN_KEY "Unknown key \"%s\" in section \"%s\" at \"%s\""
+before section definition in \"%s\""
+#define ERR_INI_UNKNOWN_SECTION "Unknown section \"%s\" in \"%s\""
+#define ERR_INI_UNKNOWN_KEY "Unknown key \"%s\" in section \"%s\" in \"%s\""
 #define ERR_INI_AMBIGOUS_LINE "Ambiguous line \"%s\" in \"%s\""
 #define ERR_INI_SAVE_ANY_KEY "Can't save parameters declared with INI_ANY_KEY"
+#define ERR_INI_REQUIRED_PARAM "Required parameter \"%s\" in section \"%s\" "\
+		"not found in \"%s\""
 
 #define LINE_BUFFER_SIZE 256
 char line_buffer[LINE_BUFFER_SIZE];
@@ -64,12 +66,14 @@ ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
 				
 				int j;
 				for (j = 0; cur_section->params[j].key != NULL; j++) {
+					struct IniParam *cur_param = &cur_section->params[j];
 					if (
-						!strcmp(INI_ANY_KEY, cur_section->params[j].key) ||
-						!strcmp(line_buffer, cur_section->params[j].key)
+						!strcmp(INI_ANY_KEY, cur_param->key) ||
+						!strcmp(line_buffer, cur_param->key)
 					) {
-						TRY(cur_section->params[j].setter(
+						TRY(cur_param->setter(
 								line_buffer, line_buffer + i + 3));
+						cur_param->required = 0;
 						break;
 					}
 				}
@@ -85,6 +89,16 @@ ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
 	FINALLY;
 	#undef FINALLY
 	#define FINALLY
+	
+	for (int i = 0; sections[i].title != NULL; i++) {
+		const struct IniSection *cur_section = &sections[i];
+		for (int j = 0; cur_section->params[j].key != NULL; j++) {
+			const struct IniParam *cur_param = &cur_section->params[j];
+			if (cur_param->required)
+				THROW(ERR_INI_REQUIRED_PARAM, cur_param->key,
+						cur_section->title, filename);
+		}
+	}
 	return 0;
 }
 
@@ -97,20 +111,17 @@ ExcCode ini_save(const char *filename, const struct IniSection sections[]) {
 		THROW(ERR_FILE_OPEN_FOR_WRITING, filename);
 	#undef FINALLY
 	#define FINALLY fclose(f);
-	int i;
-	for (i = 0; sections[i].title != NULL; i++) {
+	for (int i = 0; sections[i].title != NULL; i++) {
 		const struct IniSection *cur_section = &sections[i];
 		if (fprintf(f, "[%s]\n", cur_section->title) < 0)
 			THROW(ERR_FILE_WRITE, filename);
-		int j;
-		for (j = 0; sections[i].params[j].key != NULL; j++) {
-			if (!strcmp(INI_ANY_KEY, cur_section->params[j].key))
+		for (int j = 0; cur_section->params[j].key != NULL; j++) {
+			const struct IniParam *cur_param = &cur_section->params[j];
+			if (!strcmp(INI_ANY_KEY, cur_param->key))
 				THROW(ERR_INI_SAVE_ANY_KEY);
-			TRY(cur_section->params[j].getter(cur_section->params[j].key,
+			TRY(cur_param->getter(cur_param->key,
 					value_buffer, VALUE_BUFFER_SIZE));
-			if (fprintf(
-				f, "%s = %s\n", cur_section->params[j].key, value_buffer
-			) < 0)
+			if (fprintf(f, "%s = %s\n", cur_param->key, value_buffer) < 0)
 				THROW(ERR_FILE_WRITE, filename);
 		}
 	}

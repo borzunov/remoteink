@@ -9,8 +9,8 @@
 
 
 #define SERVER_HOST_SIZE 256
-char server_host[SERVER_HOST_SIZE] = "0.0.0.0";
-int server_port = 9312;
+char server_host[SERVER_HOST_SIZE];
+int server_port;
 
 ExcCode load_server_host(const char *key, const char *value) {
 	strncpy(server_host, value, SERVER_HOST_SIZE - 1);
@@ -24,7 +24,7 @@ ExcCode load_server_port(const char *key, const char *value) {
 }
 
 
-int max_fps = 20;
+int max_fps;
 
 ExcCode load_max_fps(const char *key, const char *value) {
 	TRY(parse_int(key, value, 1, 100, &max_fps));
@@ -45,7 +45,7 @@ ExcCode load_height_divisor(const char *key, const char *value) {
 }
 
 
-int window_tracking_enabled = 1;
+int window_tracking_enabled;
 
 ExcCode load_window_tracking_enabled(const char *key, const char *value) {
 	TRY(parse_bool(key, value, &window_tracking_enabled));
@@ -53,9 +53,9 @@ ExcCode load_window_tracking_enabled(const char *key, const char *value) {
 }
 
 
-int stats_enabled = 0;
+int stats_enabled;
 #define STATS_FILENAME_SIZE 256
-char stats_filename[STATS_FILENAME_SIZE] = "stats.log";
+char stats_filename[STATS_FILENAME_SIZE];
 
 ExcCode load_stats_enabled(const char *key, const char *value) {
 	TRY(parse_bool(key, value, &stats_enabled));
@@ -120,30 +120,30 @@ ExcCode load_shortcut(const char *key, const char *value) {
 
 const struct IniSection sections[] = {
 	{"Server", (struct IniParam []) {
-		{"Host", load_server_host, NULL},
-		{"Port", load_server_port, NULL},
-		{NULL, NULL, NULL}
+		{"Host", load_server_host, NULL, 1},
+		{"Port", load_server_port, NULL, 1},
+		{NULL}
 	}},
 	{"Monitor", (struct IniParam []) {
-		{"MaxFPS", load_max_fps, NULL},
-		{"WidthDivisor", load_width_divisor, NULL},
-		{"HeightDivisor", load_height_divisor, NULL},
-		{NULL, NULL, NULL}
+		{"MaxFPS", load_max_fps, NULL, 1},
+		{"WidthDivisor", load_width_divisor, NULL, 1},
+		{"HeightDivisor", load_height_divisor, NULL, 1},
+		{NULL}
 	}},
 	{"Defaults", (struct IniParam []) {
-		{"WindowTrackingEnabled", load_window_tracking_enabled, NULL},
-		{NULL, NULL, NULL}
+		{"WindowTrackingEnabled", load_window_tracking_enabled, NULL, 1},
+		{NULL}
 	}},
 	{"Stats", (struct IniParam []) {
-		{"Enabled", load_stats_enabled, NULL},
-		{"File", load_stats_filename, NULL},
-		{NULL, NULL, NULL}
+		{"Enabled", load_stats_enabled, NULL, 1},
+		{"File", load_stats_filename, NULL, 1},
+		{NULL}
 	}},
 	{"Shortcuts", (struct IniParam []) {
-		{"*", load_shortcut, NULL},
-		{NULL, NULL}
+		{"*", load_shortcut, NULL, 0},
+		{NULL}
 	}},
-	{NULL, NULL}
+	{NULL}
 };
 
 

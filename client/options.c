@@ -58,15 +58,15 @@ ExcCode save_orientation(const char *key, char *buffer, int buffer_size) {
 
 const struct IniSection sections[] = {
 	{"Server", (struct IniParam []) {
-		{"Host", load_server_host, save_server_host},
-		{"Port", load_server_port, save_server_port},
-		{NULL, NULL, NULL}
+		{"Host", load_server_host, save_server_host, 0},
+		{"Port", load_server_port, save_server_port, 0},
+		{NULL}
 	}},
 	{"Client", (struct IniParam []) {
-		{"Orientation", load_orientation, save_orientation},
-		{NULL, NULL, NULL}
+		{"Orientation", load_orientation, save_orientation, 0},
+		{NULL}
 	}},
-	{NULL, NULL}
+	{NULL}
 };
 
 

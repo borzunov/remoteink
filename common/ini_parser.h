@@ -15,6 +15,7 @@ struct IniParam {
 	const char *key;
 	ExcCode (*setter)(const char *key, const char *value);
 	ExcCode (*getter)(const char *key, char *buffer, int buffer_size);
+	int required;
 };
 #define INI_ANY_KEY "*"
 

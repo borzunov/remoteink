@@ -52,6 +52,13 @@ ExcCode load_window_tracking_enabled(const char *key, const char *value) {
 	return 0;
 }
 
+double default_scale;
+
+ExcCode load_default_scale(const char *key, const char *value) {
+	TRY(parse_double(key, value, MIN_SCALE, MAX_SCALE, &default_scale));
+	return 0;
+}
+
 
 int stats_enabled;
 #define STATS_FILENAME_SIZE 256
@@ -80,6 +87,9 @@ const struct HandlerRecord handlers[] = {
 	{"MoveLeft", move_left_handler},
 	{"MoveRight", move_right_handler},
 	{"ResetPosition", reset_position},
+	{"ZoomIn", zoom_in_handler},
+	{"ZoomOut", zoom_out_handler},
+	{"ResetScale", reset_scale},
 	{"ToggleWindowTracking", toogle_window_tracking_handler},
 	{"AdjustWindowSize", adjust_window_size_handler},
 	{NULL, NULL}
@@ -132,6 +142,7 @@ const struct IniSection sections[] = {
 	}},
 	{"Defaults", (struct IniParam []) {
 		{"WindowTrackingEnabled", load_window_tracking_enabled, NULL, 1},
+		{"Scale", load_default_scale, NULL, 1},
 		{NULL}
 	}},
 	{"Stats", (struct IniParam []) {

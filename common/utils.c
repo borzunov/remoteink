@@ -51,6 +51,19 @@ ExcCode parse_int(const char *key, const char *value, int min, int max,
 	return 0;
 }
 
+ExcCode parse_double(const char *key, const char *value,
+		double min, double max,
+		double *res) {
+	double number;
+	if (!(
+		sscanf(value, "%lf", &number) == 1 &&
+		min <= number && number <= max
+	))
+		THROW(ERR_INVALID_DOUBLE, key, min, max);
+	*res = number;
+	return 0;
+}
+
 ExcCode parse_bool(const char *key, const char *value, int *res) {
 	if (!strcasecmp(value, INI_VALUE_FALSE))
 		*res = 0;

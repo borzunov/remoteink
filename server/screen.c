@@ -1,4 +1,5 @@
 #include "../common/messages.h"
+#include "../common/utils.h"
 #include "screen.h"
 
 #include <stdlib.h>
@@ -38,19 +39,27 @@ ExcCode screenshot_init(int *screen_width, int *screen_height) {
 #define XCB_ALL_PLANES (~0)
 
 ExcCode screenshot_get(int x, int y, int width, int height,
-		unsigned **res_data) {
-	// Note: *res_data will be set to pointer to a buffer that contains image
-	//       pixels encoded as RGBX. This pointer should be freed by caller.
+		Imlib_Image *res) {
+	int x1 = x + width;
+	int y1 = y + height;
+	x = MAX(x, 0);
+	y = MAX(y, 0);
+	x1 = MIN(x1, screen->width_in_pixels);
+	y1 = MIN(y1, screen->height_in_pixels);
+	width = x1 - x;
+	height = y1 - y;
+	
 	xcb_get_image_cookie_t cookie = xcb_get_image(display,
 			XCB_IMAGE_FORMAT_Z_PIXMAP, root, x, y, width, height,
 			XCB_ALL_PLANES);
 	xcb_get_image_reply_t *reply = xcb_get_image_reply(display, cookie, NULL);
 	if (reply == NULL)
 		THROW(ERR_X_REQUEST);
-	int res_data_length = xcb_get_image_data_length(reply);
-	*res_data = malloc(res_data_length);
-	memcpy(*res_data, (unsigned *) xcb_get_image_data(reply), res_data_length);
+	*res = imlib_create_image_using_copied_data(width, height,
+			(unsigned *) xcb_get_image_data(reply));
 	free(reply);
+	if (*res == NULL)
+		THROW(ERR_IMAGE);
 	return 0;
 }
 
@@ -236,12 +245,12 @@ ExcCode window_resize(xcb_window_t window, int width, int height) {
 	int coord, prev_width, prev_height;
 	TRY(window_get_geometry(window, &coord, &coord,
 			&prev_width, &prev_height));
-	int prev_client_width, prev_client_height;
+	int prev_client_window_width, prev_client_window_height;
 	TRY(window_get_real_geometry(client_window, &coord, &coord,
-			&prev_client_width, &prev_client_height));
+			&prev_client_window_width, &prev_client_window_height));
 	uint32_t values[2] = {
-		width - (prev_width - prev_client_width),
-		height - (prev_height - prev_client_height)
+		width - (prev_width - prev_client_window_width),
+		height - (prev_height - prev_client_window_height)
 	};
     xcb_void_cookie_t cookie = xcb_configure_window_checked(display,
 			client_window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,

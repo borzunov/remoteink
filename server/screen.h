@@ -3,6 +3,7 @@
 
 #include "../common/exceptions.h"
 
+#include <Imlib2.h>
 #include <xcb/xcb.h>
 
 
@@ -12,7 +13,7 @@ extern ExcCode screen_of_display(xcb_connection_t *c, int screen,
 
 extern ExcCode screenshot_init(int *screen_width, int *screen_height);
 extern ExcCode screenshot_get(int x, int y, int width, int height,
-		unsigned **res_data);
+		Imlib_Image *res);
 
 extern void window_get_root(xcb_window_t *res);
 extern ExcCode window_get_focused(xcb_window_t *res);

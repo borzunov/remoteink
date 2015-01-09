@@ -5,6 +5,8 @@
 #include "profiler.h"
 #include "transfer.h"
 
+#include <unistd.h>
+
 char buffer[TRANSFER_BUFFER_SIZE];
 
 ExcCode send_buffer(int conn_fd, const char *buffer, int len) {

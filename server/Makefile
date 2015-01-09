@@ -6,9 +6,9 @@ CONFIG=$(OBJDIR)/inkmonitor-server.ini
 EXECUTABLE=$(OBJDIR)/inkmonitor-server
 
 CC=gcc
-CFLAGS=-std=gnu99 -pedantic -Wall -O3
+CFLAGS=-std=gnu99 -pedantic -Wall -g
 LDFLAGS=
-LIBS=-lpthread -lrt -lX11 -lxcb -lxcb-keysyms
+LIBS=-lImlib2 -lm -lpthread -lrt -lX11 -lxcb -lxcb-keysyms
 
 all: $(EXECUTABLE) $(CONFIG)
 

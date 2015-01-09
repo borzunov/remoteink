@@ -122,7 +122,7 @@ ExcCode handle_shortcuts(const struct Shortcut shortcuts[]) {
 					(xcb_key_release_event_t *) event;
 			for (int i = 0; shortcuts[i].handler != NULL; i++) {
 				unsigned modifiers = shortcuts[i].hotkey.modifiers;
-				if (modifiers != key_release_event->state)
+				if ((modifiers & key_release_event->state) != modifiers)
 					continue;
 				for (int j = 0;
 						shortcuts[i].hotkey.keycodes[j] != XCB_NO_SYMBOL; j++)

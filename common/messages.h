@@ -2,6 +2,7 @@
 #define MESSAGES_H
 
 
+#define ERR_MALLOC "Failed to allocate memory"
 #define ERR_THREAD_CREATE "Failed to create thread"
 
 #define ERR_FILE_OPEN_FOR_READING "Can't open file \"%s\" for reading"
@@ -20,10 +21,14 @@
 
 #define PORT_MIN 1
 #define PORT_MAX 49151
-#define ERR_INVALID_INT "Parameter \"%s\" should be an integer "\
+#define ERR_INVALID_INT "Parameter \"%s\" should be an integer number "\
 		"in range from %d to %d"
+#define ERR_INVALID_DOUBLE "Parameter \"%s\" should be a real number "\
+		"in range from %.1lf to %.1lf"
 #define ERR_INVALID_BOOL "Boolean parameter \"%s\" should be set to "\
 		"\"True\" or \"False\""
+
+#define ERR_IMAGE "Error on operations with frame"
 
 #define ERR_X_CONNECT "Failed to connect to X server"
 #define ERR_X_REQUEST "Error on request to X server"

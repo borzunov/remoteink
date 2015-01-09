@@ -109,13 +109,73 @@ void track_focused_window() {
 int serv_fd, conn_fd;
 
 
+ExcCode image_expand(Imlib_Image *image, int dest_width, int dest_height) {
+	imlib_context_set_image(*image);
+	int source_width = imlib_image_get_width();
+	int source_height = imlib_image_get_height();
+	if (source_width == dest_width && source_height == dest_height)
+		return 0;
+	Imlib_Image dest_image = imlib_create_image(dest_width, dest_height);
+	if (dest_image == NULL)
+		THROW(ERR_IMAGE);
+	
+	imlib_context_set_image(dest_image);
+	imlib_context_set_color(0, 0, 0, 255);
+	imlib_image_fill_rectangle(0, 0, dest_width, dest_height);
+	imlib_blend_image_onto_image(*image, 0, 0, 0, source_width, source_height,
+			(dest_width - source_width) / 2, (dest_height - source_height) / 2,
+			source_width, source_height);
+	
+	imlib_context_set_image(*image);
+	imlib_free_image_and_decache();
+	*image = dest_image;
+	return 0;
+}
+
+ExcCode image_resize(Imlib_Image *image, int dest_width, int dest_height) {
+	imlib_context_set_image(*image);
+	int source_width = imlib_image_get_width();
+	int source_height = imlib_image_get_height();
+	if (source_width == dest_width && source_height == dest_height)
+		return 0;
+	Imlib_Image dest_image = imlib_create_cropped_scaled_image(
+			0, 0, source_width, source_height, dest_width, dest_height);
+	imlib_free_image_and_decache();
+	if (dest_image == NULL)
+		THROW(ERR_IMAGE);
+	*image = dest_image;
+	return 0;
+}
+
+ExcCode image_turn_to_data(Imlib_Image image, unsigned **res) {
+	// Note: *res will be set to pointer to a buffer that contains image
+	//       pixels encoded as RGBX. This pointer should be freed by caller.
+	imlib_context_set_image(image);
+	int data_size = imlib_image_get_width() * imlib_image_get_height() *
+			sizeof (unsigned);
+	*res = malloc(data_size);
+	if (*res == NULL)
+		THROW(ERR_MALLOC);
+	unsigned *data = imlib_image_get_data_for_reading_only();
+	memcpy(*res, data, data_size);
+	imlib_free_image_and_decache();
+	return 0;
+}
+
+
 int has_stats = 0;
 
 ExcCode send_first_frame(unsigned **image_data) {
 	track_focused_window();
+	Imlib_Image image;
 	TRY(screenshot_get(
 			active_context->frame_left, active_context->frame_top,
-			client_width, client_height, image_data));
+			active_context->frame_width, active_context->frame_height,
+			&image));
+	TRY(image_expand(&image,
+			active_context->frame_width, active_context->frame_height));
+	TRY(image_resize(&image, client_width, client_height));
+	TRY(image_turn_to_data(image, image_data));
 	TRY(image_send_all(conn_fd, *image_data, client_width, client_height));
 	return 0;
 }
@@ -130,10 +190,16 @@ ExcCode send_next_frame(unsigned **image_data,
 	
 	profiler_start(STAGE_SHOT);   
 	track_focused_window();
-	unsigned *next_image_data;
+	Imlib_Image image;
 	TRY(screenshot_get(
 			active_context->frame_left, active_context->frame_top,
-			client_width, client_height, &next_image_data));
+			active_context->frame_width, active_context->frame_height,
+			&image));
+	TRY(image_expand(&image,
+			active_context->frame_width, active_context->frame_height));
+	TRY(image_resize(&image, client_width, client_height));
+	unsigned *next_image_data;
+	TRY(image_turn_to_data(image, &next_image_data));
 	profiler_finish(STAGE_SHOT);
 	
 	unsigned i, j;
@@ -190,6 +256,7 @@ ExcCode client_mainloop() {
 	while (handle_client_flag) {
 		long long frame_start_time = get_time_nsec();
 		
+		update_frame_dims();
 		TRY(send_next_frame(&image_data, region_width, region_height));
 
 		long long frame_duration = get_time_nsec() - frame_start_time;

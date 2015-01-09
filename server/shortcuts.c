@@ -116,24 +116,32 @@ ExcCode handle_shortcuts(const struct Shortcut shortcuts[]) {
 	
 	xcb_generic_event_t *event;
 	while ((event = xcb_wait_for_event(display)) != NULL) {
-		if ((event->response_type & ~0x80) == XCB_KEY_RELEASE &&
-				active_context != NULL) {
-			xcb_key_release_event_t *key_release_event =
-					(xcb_key_release_event_t *) event;
-			for (int i = 0; shortcuts[i].handler != NULL; i++) {
-				unsigned modifiers = shortcuts[i].hotkey.modifiers;
-				if ((modifiers & key_release_event->state) != modifiers)
-					continue;
-				for (int j = 0;
-						shortcuts[i].hotkey.keycodes[j] != XCB_NO_SYMBOL; j++)
-					if (key_release_event->detail ==
-							shortcuts[i].hotkey.keycodes[j]) {
-						shortcuts[i].handler();
-						break;
-					}
+		pthread_mutex_lock(&active_context_lock);
+		
+		do {
+			if ((event->response_type & ~0x80) == XCB_KEY_RELEASE &&
+					active_context != NULL) {
+				xcb_key_release_event_t *key_release_event =
+						(xcb_key_release_event_t *) event;
+						
+				for (int i = 0; shortcuts[i].handler != NULL; i++) {
+					unsigned modifiers = shortcuts[i].hotkey.modifiers;
+					if ((modifiers & key_release_event->state) != modifiers)
+						continue;
+					for (int j = 0;
+							shortcuts[i].hotkey.keycodes[j] != XCB_NO_SYMBOL;
+							j++)
+						if (key_release_event->detail ==
+								shortcuts[i].hotkey.keycodes[j]) {
+							shortcuts[i].handler();
+							break;
+						}
+				}
 			}
-		}
-		free(event);
+			free(event);
+		} while ((event = xcb_poll_for_event(display)) != NULL);
+		
+		pthread_mutex_unlock(&active_context_lock);
 	}
 	THROW(ERR_X_REQUEST);
 }

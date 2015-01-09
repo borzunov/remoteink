@@ -17,6 +17,7 @@ struct WindowContext {
 	int frame_width, frame_height;
 };
 
+extern pthread_mutex_t active_context_lock;
 extern struct WindowContext *active_context;
 extern int window_tracking_enabled;
 

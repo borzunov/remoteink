@@ -99,6 +99,9 @@ void *start_handle_shortcuts(void *arg) {
 
 
 void track_focused_window() {
+	if (active_context != NULL)
+		update_frame_dims();
+	
 	xcb_window_t window;
 	if (!window_tracking_enabled || window_get_focused(&window))
 		window_get_root(&window);
@@ -166,6 +169,10 @@ ExcCode image_turn_to_data(Imlib_Image image, unsigned **res) {
 int has_stats = 0;
 
 ExcCode send_first_frame(unsigned **image_data) {
+	pthread_mutex_lock(&active_context_lock);
+	#undef FINALLY
+	#define FINALLY pthread_mutex_unlock(&active_context_lock);
+	
 	track_focused_window();
 	Imlib_Image image;
 	TRY(screenshot_get(
@@ -177,6 +184,10 @@ ExcCode send_first_frame(unsigned **image_data) {
 	TRY(image_resize(&image, client_width, client_height));
 	TRY(image_turn_to_data(image, image_data));
 	TRY(image_send_all(conn_fd, *image_data, client_width, client_height));
+	
+	FINALLY;
+	#undef FINALLY
+	#define FINALLY
 	return 0;
 }
 
@@ -187,6 +198,10 @@ ExcCode send_next_frame(unsigned **image_data,
 	// Check whether connection is dead. If so, SIGPIPE will be sent.
 	if (write(conn_fd, &conn_check_char, sizeof (char)) < 0)
 		THROW(ERR_SOCK_WRITE);
+	
+	pthread_mutex_lock(&active_context_lock);
+	#undef FINALLY
+	#define FINALLY pthread_mutex_unlock(&active_context_lock);
 	
 	profiler_start(STAGE_SHOT);   
 	track_focused_window();
@@ -216,6 +231,10 @@ ExcCode send_next_frame(unsigned **image_data,
 
 	traffic_uncompressed += client_width * client_height * 4;
 	has_stats = 1;
+	
+	FINALLY;
+	#undef FINALLY
+	#define FINALLY
 	return 0;
 }
 
@@ -256,7 +275,6 @@ ExcCode client_mainloop() {
 	while (handle_client_flag) {
 		long long frame_start_time = get_time_nsec();
 		
-		update_frame_dims();
 		TRY(send_next_frame(&image_data, region_width, region_height));
 
 		long long frame_duration = get_time_nsec() - frame_start_time;
@@ -349,6 +367,8 @@ ExcCode serve(int argc, char *argv[]) {
 	
 	pthread_t shortcuts_thread;
 	int shortcuts_res;
+	if (pthread_mutex_init(&active_context_lock, NULL))
+		THROW(ERR_MUTEX_INIT);
 	if (pthread_create(&shortcuts_thread, NULL,
 			start_handle_shortcuts, &shortcuts_res))
 		THROW(ERR_THREAD_CREATE);

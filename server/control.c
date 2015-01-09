@@ -12,6 +12,7 @@ int screen_width, screen_height, client_width, client_height,
 
 struct WindowContext *contexts_list = NULL;
 
+pthread_mutex_t active_context_lock;
 struct WindowContext *active_context = NULL;
 
 void activate_window_context(xcb_window_t window) {
@@ -67,16 +68,9 @@ void update_frame_dims() {
 
 int reset_coord(int screen_side, int frame_side,
 		int window_pos, int window_side) {
-	if (frame_side > screen_side)
-		return -(frame_side - screen_side) / 2;
-	int frame_pos;
-	if (frame_side > window_side)
-		frame_pos = window_pos - (frame_side - window_side) / 2;
-	else
-		frame_pos = window_pos;
-	frame_pos = MAX(frame_pos, 0);
-	frame_pos = MIN(frame_pos, screen_side - frame_side);
-	return frame_pos;
+	if (window_side >= frame_side)
+		return window_pos;
+	return window_pos - (frame_side - window_side) / 2;
 }
 
 void reset_position() {
@@ -88,30 +82,20 @@ void reset_position() {
 
 #define MOVE_STEP 10
 
-void decrease_coord(int *frame_pos) {
-	*frame_pos = MAX(*frame_pos - MOVE_STEP, 0);
-}
-
-void increase_coord(int *frame_pos, int screen_side, int frame_side) {
-	*frame_pos = MIN(*frame_pos + MOVE_STEP, screen_side - frame_side);
-}
-
 void move_up_handler() {
-	decrease_coord(&active_context->frame_top);
+	active_context->frame_top -= MOVE_STEP;
 }
 
 void move_down_handler() {
-	increase_coord(&active_context->frame_top,
-			screen_height, active_context->frame_height);
+	active_context->frame_top += MOVE_STEP;
 }
 
 void move_left_handler() {
-	decrease_coord(&active_context->frame_left);
+	active_context->frame_left -= MOVE_STEP;
 }
 
 void move_right_handler() {
-	increase_coord(&active_context->frame_left,
-			screen_width, active_context->frame_width);
+	active_context->frame_left += MOVE_STEP;
 }
 
 void toogle_window_tracking_handler() {

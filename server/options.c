@@ -60,6 +60,21 @@ ExcCode load_default_scale(const char *key, const char *value) {
 }
 
 
+int move_step;
+
+ExcCode load_move_step(const char *key, const char *value) {
+	TRY(parse_int(key, value, 0, 500, &move_step));
+	return 0;
+}
+
+double scale_factor;
+
+ExcCode load_scale_factor(const char *key, const char *value) {
+	TRY(parse_double(key, value, 1.0, MAX_SCALE, &scale_factor));
+	return 0;
+}
+
+
 int stats_enabled;
 #define STATS_FILENAME_SIZE 256
 char stats_filename[STATS_FILENAME_SIZE];
@@ -138,6 +153,11 @@ const struct IniSection sections[] = {
 		{"MaxFPS", load_max_fps, NULL, 1},
 		{"WidthDivisor", load_width_divisor, NULL, 1},
 		{"HeightDivisor", load_height_divisor, NULL, 1},
+		{NULL}
+	}},
+	{"Control", (struct IniParam []) {
+		{"MoveStep", load_move_step, NULL, 1},
+		{"ScaleFactor", load_scale_factor, NULL, 1},
 		{NULL}
 	}},
 	{"Defaults", (struct IniParam []) {

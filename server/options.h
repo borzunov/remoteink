@@ -16,6 +16,9 @@ extern int window_tracking_enabled;
 #define MAX_SCALE 5
 extern double default_scale;
 
+extern int move_step;
+extern double scale_factor;
+
 extern int stats_enabled;
 extern char stats_filename[];
 

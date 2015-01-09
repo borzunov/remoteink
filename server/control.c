@@ -91,22 +91,20 @@ void reset_position() {
 			active_context->frame_width, window_left, window_width);
 }
 
-#define MOVE_STEP 10
-
 void move_up_handler() {
-	active_context->frame_top -= MOVE_STEP;
+	active_context->frame_top -= move_step;
 }
 
 void move_down_handler() {
-	active_context->frame_top += MOVE_STEP;
+	active_context->frame_top += move_step;
 }
 
 void move_left_handler() {
-	active_context->frame_left -= MOVE_STEP;
+	active_context->frame_left -= move_step;
 }
 
 void move_right_handler() {
-	active_context->frame_left += MOVE_STEP;
+	active_context->frame_left += move_step;
 }
 
 void toogle_window_tracking_handler() {
@@ -133,10 +131,8 @@ void center_zoomed_position(double new_scale) {
 	active_context->frame_top += (prev_height - cur_height) / 2;
 }
 
-#define SCALE_COEFF 1.2
-
 void zoom_in_handler() {
-	double new_scale = active_context->scale * SCALE_COEFF;
+	double new_scale = active_context->scale * scale_factor;
 	if (new_scale < MAX_SCALE + EPS) {
 		center_zoomed_position(new_scale);
 		active_context->scale = new_scale;
@@ -148,7 +144,7 @@ void zoom_out_handler() {
 	int prev_height = round(client_height / active_context->scale);
 	if (prev_width >= screen_width && prev_height >= screen_height)
 		return;
-	double new_scale = active_context->scale / SCALE_COEFF;
+	double new_scale = active_context->scale / scale_factor;
 	if (new_scale > MIN_SCALE - EPS) {
 		center_zoomed_position(new_scale);
 		active_context->scale = new_scale;

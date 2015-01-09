@@ -22,7 +22,7 @@ extern struct WindowContext *active_context;
 extern int window_tracking_enabled;
 
 extern void activate_window_context(xcb_window_t window);
-extern void update_frame_dims();
+extern void update_frame_params();
 
 
 extern void reset_position();

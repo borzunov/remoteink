@@ -40,7 +40,13 @@ void activate_window_context(xcb_window_t window) {
 	active_context = cur;
 	
 	reset_scale();
+	update_frame_params();
 	reset_position();
+}
+
+void apply_scale(double scale) {
+	active_context->frame_width = round(client_width / scale);
+	active_context->frame_height = round(client_height / scale);
 }
 
 void normalize_coord(int *coord, int frame_side, int screen_side) {
@@ -53,11 +59,16 @@ void normalize_coord(int *coord, int frame_side, int screen_side) {
 	}
 }
 
-void update_frame_dims() {
-	active_context->frame_width = round(
-			client_width / active_context->scale);
-	active_context->frame_height = round(
-			client_height / active_context->scale);
+void update_frame_params() {
+	apply_scale(active_context->scale);
+	if (active_context->frame_width > screen_width &&
+			active_context->frame_height > screen_height) {
+		double critical_scale = MIN(
+			(double) client_width / screen_width,
+			(double) client_height / screen_height
+		);
+		apply_scale(critical_scale);
+	}
 	
 	normalize_coord(&active_context->frame_left,
 			active_context->frame_width, screen_width);
@@ -111,7 +122,6 @@ void adjust_window_size_handler() {
 
 void reset_scale() {
 	active_context->scale = default_scale;
-	update_frame_dims();
 }
 
 void center_zoomed_position(double new_scale) {	

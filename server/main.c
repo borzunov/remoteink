@@ -100,7 +100,7 @@ void *start_handle_shortcuts(void *arg) {
 
 void track_focused_window() {
 	if (active_context != NULL)
-		update_frame_dims();
+		update_frame_params();
 	
 	xcb_window_t window;
 	if (!window_tracking_enabled || window_get_focused(&window))

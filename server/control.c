@@ -2,6 +2,7 @@
 #include "../common/utils.h"
 #include "control.h"
 #include "options.h"
+#include "profiler.h"
 #include "screen.h"
 
 #include <math.h>
@@ -14,6 +15,9 @@ struct WindowContext *contexts_list = NULL;
 
 pthread_mutex_t active_context_lock;
 struct WindowContext *active_context = NULL;
+
+void reset_scale();
+void reset_position();
 
 void activate_window_context(xcb_window_t window) {
 	if (window_get_geometry(window,
@@ -77,6 +81,23 @@ void update_frame_params() {
 }
 
 
+const char *label_text = NULL;
+long long label_creation_time_nsec;
+
+void show_label(const char *text) {
+	label_text = text;
+	label_creation_time_nsec = get_time_nsec();
+}
+
+#define LABEL_BUFFER_SIZE 256
+char label_buffer[LABEL_BUFFER_SIZE];
+
+void show_label_with_scale() {
+	snprintf(label_buffer, LABEL_BUFFER_SIZE, "Scale: %.1lfx",
+			active_context->scale);
+	show_label(label_buffer);
+}
+
 int reset_coord(int screen_side, int frame_side,
 		int window_pos, int window_side) {
 	if (window_side >= frame_side)
@@ -89,6 +110,11 @@ void reset_position() {
 			active_context->frame_height, window_top, window_height);
 	active_context->frame_left = reset_coord(screen_width,
 			active_context->frame_width, window_left, window_width);
+}
+
+void reset_position_handler() {
+	reset_position();
+	show_label("Position reset");
 }
 
 void move_up_handler() {
@@ -109,6 +135,10 @@ void move_right_handler() {
 
 void toggle_window_tracking_handler() {
 	window_tracking_enabled = !window_tracking_enabled;
+	
+	snprintf(label_buffer, LABEL_BUFFER_SIZE, "Window tracking: %s",
+			window_tracking_enabled ? "On" : "Off");
+	show_label(label_buffer);
 }
 
 void adjust_window_size_handler() {
@@ -116,6 +146,8 @@ void adjust_window_size_handler() {
 			active_context->frame_width, active_context->frame_height);
 	activate_window_context(active_context->window);
 	reset_position();
+	
+	show_label("Window adjusted");
 }
 
 void reset_scale() {
@@ -123,6 +155,11 @@ void reset_scale() {
 		active_context->scale = default_windows_scale;
 	else
 		active_context->scale = default_desktop_scale;
+}
+
+void reset_scale_handler() {
+	reset_scale();
+	show_label_with_scale();
 }
 
 void center_zoomed_position(double new_scale) {	
@@ -142,20 +179,28 @@ void zoom_in_handler() {
 		center_zoomed_position(new_scale);
 		active_context->scale = new_scale;
 	}
+	
+	show_label_with_scale();
 }
 
 void zoom_out_handler() {
 	int prev_width = round(client_width / active_context->scale);
 	int prev_height = round(client_height / active_context->scale);
-	if (prev_width >= screen_width && prev_height >= screen_height)
-		return;
-	double new_scale = active_context->scale / scale_factor;
-	if (new_scale > MIN_SCALE - SCALE_EPS) {
-		center_zoomed_position(new_scale);
-		active_context->scale = new_scale;
+	if (prev_width < screen_width || prev_height < screen_height) {
+		double new_scale = active_context->scale / scale_factor;
+		if (new_scale > MIN_SCALE - SCALE_EPS) {
+			center_zoomed_position(new_scale);
+			active_context->scale = new_scale;
+		}
 	}
+	
+	show_label_with_scale();
 }
 
 void toggle_cursor_capturing_handler() {
 	cursor_capturing_enabled = !cursor_capturing_enabled;
+	
+	snprintf(label_buffer, LABEL_BUFFER_SIZE, "Cursor capturing: %s",
+			cursor_capturing_enabled ? "On" : "Off");
+	show_label(label_buffer);
 }

@@ -19,6 +19,8 @@ extern int cursor_capturing_enabled;
 extern int move_step;
 extern double scale_factor;
 
+extern char label_font_name[];
+
 extern int stats_enabled;
 extern char stats_filename[];
 

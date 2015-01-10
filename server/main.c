@@ -163,6 +163,36 @@ ExcCode image_resize(Imlib_Image *image, int dest_width, int dest_height) {
 	return 0;
 }
 
+#define LABEL_SHOW_TIME_NSEC (2 * (NSECS_PER_SEC))
+
+#define LABEL_BOX_MARGIN 25
+#define LABEL_BOX_PADDING 5
+
+ExcCode draw_label(Imlib_Image image) {
+	if (label_text == NULL)
+		return 0;
+	if (get_time_nsec() - label_creation_time_nsec > LABEL_SHOW_TIME_NSEC) {
+		label_text = NULL;
+		return 0;
+	}
+	
+	int label_width, label_height;
+	imlib_get_text_size(label_text, &label_width, &label_height);
+	imlib_context_set_image(image);
+	int box_left = LABEL_BOX_MARGIN;
+	int box_top = client_height - LABEL_BOX_MARGIN - 2 * LABEL_BOX_PADDING -
+			label_height;
+	int box_width = 2 * LABEL_BOX_PADDING + label_width;
+	int box_height = 2 * LABEL_BOX_PADDING + label_height;
+	imlib_context_set_color(255, 255, 255, 255);
+	imlib_image_fill_rectangle(box_left, box_top, box_width, box_height);
+	imlib_context_set_color(0, 0, 0, 255);
+	imlib_image_draw_rectangle(box_left, box_top, box_width, box_height);
+	imlib_text_draw(box_left + LABEL_BOX_PADDING, box_top + LABEL_BOX_PADDING,
+			label_text);
+	return 0;
+}
+
 ExcCode image_turn_to_data(Imlib_Image image, unsigned **res) {
 	// Note: *res will be set to pointer to a buffer that contains image
 	//       pixels encoded as RGBX. This pointer should be freed by caller.
@@ -190,6 +220,7 @@ ExcCode get_screenshot_data(unsigned **image_data) {
 	TRY(image_expand(&image,
 			active_context->frame_width, active_context->frame_height));
 	TRY(image_resize(&image, client_width, client_height));
+	TRY(draw_label(image));
 	TRY(image_turn_to_data(image, image_data));
 	return 0;
 }
@@ -278,6 +309,8 @@ ExcCode client_handshake() {
 }
 
 ExcCode client_mainloop() {
+	show_label("Connected");
+	
 	unsigned *image_data;
 	TRY(send_first_frame(&image_data));
 	
@@ -377,6 +410,11 @@ ExcCode serve(int argc, char *argv[]) {
 		"    Monitor resolution: %dx%d\n",
 		config_filename, screen_width, screen_height
 	);
+	
+	Imlib_Font label_font = imlib_load_font(label_font_name);
+	if (label_font == NULL)
+		THROW(ERR_FONT, label_font_name);
+	imlib_context_set_font(label_font);
 	
 	pthread_t shortcuts_thread;
 	int shortcuts_res;

@@ -31,6 +31,8 @@
 
 #define ERR_IMAGE "Error on operations with frame"
 
+#define ERR_FONT "Failed to load font \"%s\""
+
 #define ERR_X_CONNECT "Failed to connect to X server"
 #define ERR_X_REQUEST "Error on request to X server"
 

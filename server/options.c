@@ -4,6 +4,7 @@
 #include "control.h"
 #include "options.h"
 
+#include <Imlib2.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -91,6 +92,21 @@ ExcCode load_scale_factor(const char *key, const char *value) {
 }
 
 
+ExcCode load_font_path(const char *key, const char *value) {
+	imlib_add_path_to_font_path(value);
+	return 0;
+}
+
+#define LABEL_FONT_NAME_SIZE 256
+char label_font_name[LABEL_FONT_NAME_SIZE];
+
+ExcCode load_label_font_name(const char *key, const char *value) {
+	strncpy(label_font_name, value, LABEL_FONT_NAME_SIZE - 1);
+	server_host[LABEL_FONT_NAME_SIZE - 1] = '\0';
+	return 0;
+}
+
+
 int stats_enabled;
 #define STATS_FILENAME_SIZE 256
 char stats_filename[STATS_FILENAME_SIZE];
@@ -117,10 +133,10 @@ const struct HandlerRecord handlers[] = {
 	{"MoveDown", move_down_handler},
 	{"MoveLeft", move_left_handler},
 	{"MoveRight", move_right_handler},
-	{"ResetPosition", reset_position},
+	{"ResetPosition", reset_position_handler},
 	{"ZoomIn", zoom_in_handler},
 	{"ZoomOut", zoom_out_handler},
-	{"ResetScale", reset_scale},
+	{"ResetScale", reset_scale_handler},
 	{"ToggleWindowTracking", toggle_window_tracking_handler},
 	{"AdjustWindowSize", adjust_window_size_handler},
 	{"ToggleCursorCapturing", toggle_cursor_capturing_handler},
@@ -175,6 +191,11 @@ const struct IniSection sections[] = {
 	{"Control", (struct IniParam []) {
 		{"MoveStep", load_move_step, NULL, 1},
 		{"ScaleFactor", load_scale_factor, NULL, 1},
+		{NULL}
+	}},
+	{"Fonts", (struct IniParam []) {
+		{"Path", load_font_path, NULL, 1},
+		{"LabelFont", load_label_font_name, NULL, 1},
 		{NULL}
 	}},
 	{"Defaults", (struct IniParam []) {

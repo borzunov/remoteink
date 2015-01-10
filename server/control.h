@@ -30,11 +30,12 @@ extern void move_up_handler();
 extern void move_down_handler();
 extern void move_left_handler();
 extern void move_right_handler();
-extern void toogle_window_tracking_handler();
+extern void toggle_window_tracking_handler();
 extern void adjust_window_size_handler();
 extern void reset_scale();
 extern void zoom_in_handler();
 extern void zoom_out_handler();
+extern void toggle_cursor_capturing_handler();
 
 
 #endif

@@ -7,11 +7,11 @@
 #include <xcb/xcb.h>
 
 
-extern ExcCode screen_of_display(xcb_connection_t *c, int screen,
-		xcb_screen_t **res);
+extern xcb_connection_t *display;
+extern xcb_screen_t *screen;
+extern xcb_window_t root;
 
-
-extern ExcCode screenshot_init(int *screen_width, int *screen_height);
+extern ExcCode screenshot_init();
 extern ExcCode screenshot_get(int x, int y, int width, int height,
 		Imlib_Image *res);
 

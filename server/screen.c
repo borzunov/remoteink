@@ -1,9 +1,11 @@
 #include "../common/messages.h"
 #include "../common/utils.h"
+#include "options.h"
 #include "screen.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <xcb/xfixes.h>
 
 
 ExcCode screen_of_display(xcb_connection_t *c, int screen,
@@ -19,20 +21,61 @@ ExcCode screen_of_display(xcb_connection_t *c, int screen,
 	THROW(ERR_X_REQUEST);
 }
 
-
 xcb_connection_t *display;
 xcb_screen_t *screen;
 xcb_window_t root;
 
-ExcCode screenshot_init(int *screen_width, int *screen_height) {
+#define ERR_CURSOR "Cursor capturing isn't supported"
+
+ExcCode screenshot_cursor_init() {
+	xcb_xfixes_query_version_cookie_t cookie =
+			xcb_xfixes_query_version(display,
+			XCB_XFIXES_MAJOR_VERSION, XCB_XFIXES_MINOR_VERSION);
+	xcb_xfixes_query_version_reply_t *reply =
+			xcb_xfixes_query_version_reply(display, cookie, NULL);
+	if (reply == NULL)
+		THROW(ERR_CURSOR);
+	return 0;
+}
+
+ExcCode screenshot_init() {
 	int default_screen_no;
 	display = xcb_connect(NULL, &default_screen_no);
 	if (xcb_connection_has_error(display))
 		THROW(ERR_X_CONNECT);
 	TRY(screen_of_display(display, default_screen_no, &screen));
 	root = screen->root;
-	*screen_width = screen->width_in_pixels;
-	*screen_height = screen->height_in_pixels;
+	
+	screenshot_cursor_init();
+	return 0;
+}
+
+ExcCode screenshot_cursor_blend(int x, int y, Imlib_Image image) {
+	xcb_xfixes_get_cursor_image_cookie_t cookie =
+			xcb_xfixes_get_cursor_image(display);
+	xcb_xfixes_get_cursor_image_reply_t *reply =
+			xcb_xfixes_get_cursor_image_reply(display, cookie, NULL);
+	if (reply == NULL)
+		return 0;
+	unsigned *cursor_data = xcb_xfixes_get_cursor_image_cursor_image(reply);
+	if (cursor_data == NULL)
+		return 0;
+	Imlib_Image cursor = imlib_create_image_using_data(
+			reply->width, reply->height,
+			cursor_data);
+	if (cursor == NULL)
+		THROW(ERR_IMAGE);
+	imlib_context_set_image(cursor);
+	imlib_image_set_has_alpha(1);
+	
+	imlib_context_set_image(image);
+	imlib_blend_image_onto_image(cursor, 0, 0, 0, reply->width, reply->height,
+			reply->x - reply->xhot - x, reply->y - reply->yhot - y,
+			reply->width, reply->height);
+	
+	imlib_context_set_image(cursor);
+	imlib_free_image_and_decache();
+	free(reply);
 	return 0;
 }
 
@@ -60,6 +103,9 @@ ExcCode screenshot_get(int x, int y, int width, int height,
 	free(reply);
 	if (*res == NULL)
 		THROW(ERR_IMAGE);
+		
+	if (cursor_capturing_enabled)
+		screenshot_cursor_blend(x, y, *res);
 	return 0;
 }
 
@@ -218,7 +264,7 @@ ExcCode window_unmaximize(xcb_window_t window) {
 	event.sequence = 0;
 	event.window = window;
 	event.type = net_wm_state;
-	event.data.data32[0] = 0; // 0 - disable, 1 - enable, 2 - toogle
+	event.data.data32[0] = 0; // 0 - disable, 1 - enable, 2 - toggle
 	event.data.data32[1] = net_wm_state_maximized_horz;
 	event.data.data32[2] = net_wm_state_maximized_vert;
 	event.data.data32[3] = 0;

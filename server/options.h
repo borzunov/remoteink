@@ -14,6 +14,7 @@ extern int window_tracking_enabled;
 #define MIN_SCALE 0.4
 #define MAX_SCALE 5
 extern double default_windows_scale, default_desktop_scale;
+extern int cursor_capturing_enabled;
 
 extern int move_step;
 extern double scale_factor;

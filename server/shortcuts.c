@@ -10,18 +10,10 @@
 #include <X11/Xutil.h>
 #include <xcb/xcb_keysyms.h>
 
-xcb_connection_t *display;
+
 xcb_key_symbols_t *key_symbols_table;
-xcb_window_t root;
 
 ExcCode shortcuts_init() {
-	int default_screen_no;
-	display = xcb_connect(NULL, &default_screen_no);
-	if (xcb_connection_has_error(display))
-		THROW(ERR_X_CONNECT);
-	xcb_screen_t *screen;
-	TRY(screen_of_display(display, default_screen_no, &screen));
-	root = screen->root;
 	key_symbols_table = xcb_key_symbols_alloc(display);
 	if (key_symbols_table == NULL)
 		THROW(ERR_X_REQUEST);

@@ -89,8 +89,6 @@ ExcCode parse_arguments(int argc, char *argv[]) {
 }
 
 
-Display *display;
-
 void *start_handle_shortcuts(void *arg) {
 	if (handle_shortcuts(shortcuts))
 		show_error(exc_message, 0);
@@ -355,7 +353,9 @@ ExcCode serve(int argc, char *argv[]) {
 			config_filename, CONFIG_FILENAME_SIZE);
 	TRY(parse_arguments(argc, argv));
 	
-	TRY(screenshot_init(&screen_width, &screen_height));
+	TRY(screenshot_init());
+	screen_width = screen->width_in_pixels;
+	screen_height = screen->height_in_pixels;
 	TRY(shortcuts_init());
 	
 	TRY(load_config(config_filename));

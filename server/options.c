@@ -68,6 +68,13 @@ ExcCode load_default_desktop_scale(const char *key, const char *value) {
 	return 0;
 }
 
+int cursor_capturing_enabled;
+
+ExcCode load_cursor_capturing_enabled(const char *key, const char *value) {
+	TRY(parse_bool(key, value, &cursor_capturing_enabled));
+	return 0;
+}
+
 
 int move_step;
 
@@ -114,8 +121,9 @@ const struct HandlerRecord handlers[] = {
 	{"ZoomIn", zoom_in_handler},
 	{"ZoomOut", zoom_out_handler},
 	{"ResetScale", reset_scale},
-	{"ToggleWindowTracking", toogle_window_tracking_handler},
+	{"ToggleWindowTracking", toggle_window_tracking_handler},
 	{"AdjustWindowSize", adjust_window_size_handler},
+	{"ToggleCursorCapturing", toggle_cursor_capturing_handler},
 	{NULL, NULL}
 };
 
@@ -173,6 +181,7 @@ const struct IniSection sections[] = {
 		{"WindowTrackingEnabled", load_window_tracking_enabled, NULL, 1},
 		{"WindowsScale", load_default_windows_scale, NULL, 1},
 		{"DesktopScale", load_default_desktop_scale, NULL, 1},
+		{"CursorCapturingEnabled", load_cursor_capturing_enabled, NULL, 1},
 		{NULL}
 	}},
 	{"Stats", (struct IniParam []) {

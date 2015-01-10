@@ -107,7 +107,7 @@ void move_right_handler() {
 	active_context->frame_left += move_step;
 }
 
-void toogle_window_tracking_handler() {
+void toggle_window_tracking_handler() {
 	window_tracking_enabled = !window_tracking_enabled;
 }
 
@@ -154,4 +154,8 @@ void zoom_out_handler() {
 		center_zoomed_position(new_scale);
 		active_context->scale = new_scale;
 	}
+}
+
+void toggle_cursor_capturing_handler() {
+	cursor_capturing_enabled = !cursor_capturing_enabled;
 }

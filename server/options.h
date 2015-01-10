@@ -11,10 +11,9 @@ extern int server_port;
 extern int max_fps, width_divisor, height_divisor;
 
 extern int window_tracking_enabled;
-#define EPS 1e-7
 #define MIN_SCALE 0.4
 #define MAX_SCALE 5
-extern double default_scale;
+extern double default_windows_scale, default_desktop_scale;
 
 extern int move_step;
 extern double scale_factor;

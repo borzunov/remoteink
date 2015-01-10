@@ -119,7 +119,10 @@ void adjust_window_size_handler() {
 }
 
 void reset_scale() {
-	active_context->scale = default_scale;
+	if (window_tracking_enabled)
+		active_context->scale = default_windows_scale;
+	else
+		active_context->scale = default_desktop_scale;
 }
 
 void center_zoomed_position(double new_scale) {	
@@ -131,9 +134,11 @@ void center_zoomed_position(double new_scale) {
 	active_context->frame_top += (prev_height - cur_height) / 2;
 }
 
+#define SCALE_EPS 1e-6
+
 void zoom_in_handler() {
 	double new_scale = active_context->scale * scale_factor;
-	if (new_scale < MAX_SCALE + EPS) {
+	if (new_scale < MAX_SCALE + SCALE_EPS) {
 		center_zoomed_position(new_scale);
 		active_context->scale = new_scale;
 	}
@@ -145,7 +150,7 @@ void zoom_out_handler() {
 	if (prev_width >= screen_width && prev_height >= screen_height)
 		return;
 	double new_scale = active_context->scale / scale_factor;
-	if (new_scale > MIN_SCALE - EPS) {
+	if (new_scale > MIN_SCALE - SCALE_EPS) {
 		center_zoomed_position(new_scale);
 		active_context->scale = new_scale;
 	}

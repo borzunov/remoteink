@@ -110,6 +110,21 @@ void track_focused_window() {
 int serv_fd, conn_fd;
 
 
+ExcCode return_cursor() {
+	int x, y, same_screen;
+	if (cursor_get_position(&x, &y, &same_screen))
+		return 0;
+	int new_x = MAX(x, active_context->frame_left);
+	new_x = MIN(new_x,
+			active_context->frame_left + active_context->frame_width);
+	int new_y = MAX(y, active_context->frame_top);
+	new_y = MIN(new_y,
+			active_context->frame_top + active_context->frame_height);
+	if (!same_screen || x != new_x || y != new_y)
+		cursor_set_position(new_x, new_y);
+	return 0;
+}
+
 ExcCode image_expand(Imlib_Image *image, int dest_width, int dest_height) {
 	imlib_context_set_image(*image);
 	int source_width = imlib_image_get_width();
@@ -163,15 +178,10 @@ ExcCode image_turn_to_data(Imlib_Image image, unsigned **res) {
 	return 0;
 }
 
-
-int has_stats = 0;
-
-ExcCode send_first_frame(unsigned **image_data) {
-	pthread_mutex_lock(&active_context_lock);
-	#undef FINALLY
-	#define FINALLY pthread_mutex_unlock(&active_context_lock);
-	
+ExcCode get_screenshot_data(unsigned **image_data) {
 	track_focused_window();
+	if (cursor_capturing_enabled)
+		TRY(return_cursor());
 	Imlib_Image image;
 	TRY(screenshot_get(
 			active_context->frame_left, active_context->frame_top,
@@ -181,6 +191,18 @@ ExcCode send_first_frame(unsigned **image_data) {
 			active_context->frame_width, active_context->frame_height));
 	TRY(image_resize(&image, client_width, client_height));
 	TRY(image_turn_to_data(image, image_data));
+	return 0;
+}
+
+
+int has_stats = 0;
+
+ExcCode send_first_frame(unsigned **image_data) {
+	pthread_mutex_lock(&active_context_lock);
+	#undef FINALLY
+	#define FINALLY pthread_mutex_unlock(&active_context_lock);
+	
+	TRY(get_screenshot_data(image_data));
 	TRY(image_send_all(conn_fd, *image_data, client_width, client_height));
 	
 	FINALLY;
@@ -201,18 +223,9 @@ ExcCode send_next_frame(unsigned **image_data,
 	#undef FINALLY
 	#define FINALLY pthread_mutex_unlock(&active_context_lock);
 	
-	profiler_start(STAGE_SHOT);   
-	track_focused_window();
-	Imlib_Image image;
-	TRY(screenshot_get(
-			active_context->frame_left, active_context->frame_top,
-			active_context->frame_width, active_context->frame_height,
-			&image));
-	TRY(image_expand(&image,
-			active_context->frame_width, active_context->frame_height));
-	TRY(image_resize(&image, client_width, client_height));
+	profiler_start(STAGE_SHOT);
 	unsigned *next_image_data;
-	TRY(image_turn_to_data(image, &next_image_data));
+	TRY(get_screenshot_data(&next_image_data));
 	profiler_finish(STAGE_SHOT);
 	
 	unsigned i, j;

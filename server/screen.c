@@ -164,6 +164,31 @@ void find_toplevel_window(xcb_window_t window, xcb_window_t *res) {
 }
 
 
+ExcCode cursor_get_position(int *x, int *y, int *same_screen) {
+	xcb_query_pointer_cookie_t cookie =
+			xcb_query_pointer(display, root);
+	xcb_query_pointer_reply_t *reply =
+			xcb_query_pointer_reply(display, cookie, NULL);
+	if (reply == NULL)
+		THROW(ERR_X_REQUEST);
+	*x = reply->root_x;
+	*y = reply->root_y;
+	*same_screen = reply->same_screen;
+	free(reply);
+	return 0;
+}
+
+ExcCode cursor_set_position(int x, int y) {
+	xcb_void_cookie_t cookie =
+			xcb_warp_pointer(display, XCB_NONE, root, 0, 0, 0, 0, x, y);
+	if (xcb_request_check(display, cookie) != NULL)
+		THROW(ERR_X_REQUEST);
+	if (xcb_flush(display) <= 0)
+		THROW(ERR_X_REQUEST);
+	return 0;
+}
+
+
 void window_get_root(xcb_window_t *res) {
 	*res = root;
 }

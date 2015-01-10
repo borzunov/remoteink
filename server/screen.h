@@ -15,6 +15,9 @@ extern ExcCode screenshot_init();
 extern ExcCode screenshot_get(int x, int y, int width, int height,
 		Imlib_Image *res);
 
+extern ExcCode cursor_get_position(int *x, int *y, int *same_screen);
+extern ExcCode cursor_set_position(int x, int y);
+
 extern void window_get_root(xcb_window_t *res);
 extern ExcCode window_get_focused(xcb_window_t *res);
 extern ExcCode window_get_geometry(xcb_window_t window,

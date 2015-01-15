@@ -20,6 +20,8 @@
 #define ERR_SOCK_WRITE "Failed to send data to socket"
 #define ERR_SOCK_CLOSE "Failed to close socket"
 
+#define ERR_PROTOCOL "Protocol mismatch"
+
 #define PORT_MIN 1
 #define PORT_MAX 49151
 #define ERR_INVALID_INT "Parameter \"%s\" should be an integer number "\
@@ -35,6 +37,8 @@
 
 #define ERR_X_CONNECT "Failed to connect to X server"
 #define ERR_X_REQUEST "Error on request to X server"
+
+#define ERR_WRONG_PASSWORD "Wrong password"
 
 
 #endif

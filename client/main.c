@@ -50,13 +50,16 @@ void edit_host_handler() {
 char server_port_buffer[SERVER_PORT_BUFFER_SIZE];
 #define PORT_MAXLEN 5
 
+void submit_port() {
+	snprintf(server_port_buffer, SERVER_PORT_BUFFER_SIZE, "%d", server_port);
+}
+
 void change_port_handler(char *buffer) {
 	int incorrect = 0;
 	if (buffer && parse_int(
 			"Port", server_port_buffer, PORT_MIN, PORT_MAX, &server_port)) {
 		incorrect = 1;
-		snprintf(server_port_buffer, SERVER_PORT_BUFFER_SIZE,
-				"%d", server_port);
+		submit_port();
 	}
 	change_option_handler(buffer);
 	if (incorrect)
@@ -65,9 +68,32 @@ void change_port_handler(char *buffer) {
 
 void edit_port_handler() {
 	pointer_need_repaint = 0;
-	snprintf(server_port_buffer, SERVER_PORT_BUFFER_SIZE, "%d", server_port);
 	OpenKeyboard("Port:", server_port_buffer, PORT_MAXLEN,
 			KBD_NUMERIC, change_port_handler);
+}
+
+char password_hidden[PASSWORD_SIZE];
+
+#define PASSWORD_HIDING_CHAR '*'
+
+void submit_password() {
+	int i;
+	for (i = 0; password[i]; i++)
+		password_hidden[i] = PASSWORD_HIDING_CHAR;
+	password_hidden[i] = 0;
+}
+
+void change_password_handler(char *buffer) {
+	if (buffer)
+		submit_password();
+	change_option_handler(buffer);
+}
+
+void edit_password_handler() {
+	pointer_need_repaint = 0;
+	submit_port();
+	OpenKeyboard("Password:", password, PORT_MAXLEN,
+			KBD_PASSWORD, change_password_handler);
 }
 
 const char *orientation_cur_caption;
@@ -78,9 +104,13 @@ void update_orientation() {
 	screen_height = ScreenHeight();
 }
 
+void submit_orientation() {
+	orientation_cur_caption = orientation_captions[orientation];
+}
+
 void switch_orientation_handler() {
 	orientation = !orientation;
-	orientation_cur_caption = orientation_captions[orientation];
+	submit_orientation();
 	update_orientation();
 	
 	save_config(config_filename);
@@ -183,7 +213,7 @@ void show_intro() {
 	
 	clear_labels();
 	add_label("Tool for using E-Ink reader as computer monitor");
-	add_label("Copyright (c) 2013-2014 Alexander Borzunov");
+	add_label("Copyright (c) 2013-2015 Alexander Borzunov");
 	label_y += PARAGRAPH_EXTRA_SPACING * 2;
 	
 	add_label("    Controls");
@@ -213,9 +243,11 @@ void show_intro() {
 	add_label("    Settings");
 	label_y += PARAGRAPH_EXTRA_SPACING;
 	add_field("Host:", server_host, edit_text, edit_host_handler);
-	snprintf(server_port_buffer, SERVER_PORT_BUFFER_SIZE, "%d", server_port);
+	submit_port();
 	add_field("Port:", server_port_buffer, edit_text, edit_port_handler);
-	orientation_cur_caption = orientation_captions[orientation];
+	submit_password();
+	add_field("Password:", password_hidden, edit_text, edit_password_handler);
+	submit_orientation();
 	add_field("Orientation:", orientation_cur_caption,
 			"Switch", switch_orientation_handler);
 	

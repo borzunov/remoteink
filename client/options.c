@@ -56,16 +56,37 @@ ExcCode save_orientation(const char *key, char *buffer, int buffer_size) {
 }
 
 
+#define PASSWORD_DEFAULT "demo"
+char password[PASSWORD_SIZE] = PASSWORD_DEFAULT;
+
+ExcCode load_password(const char *key, const char *value) {
+	strncpy(password, value, PASSWORD_SIZE - 1);
+	password[PASSWORD_SIZE - 1] = '\0';
+	return 0;
+}
+
+ExcCode save_password(const char *key, char *buffer, int buffer_size) {
+	strncpy(buffer, password, buffer_size - 1);
+	buffer[buffer_size - 1] = '\0';
+	return 0;
+}
+
+
 const struct IniSection sections[] = {
 	{"Server", (struct IniParam []) {
 		{"Host", load_server_host, save_server_host, 0},
 		{"Port", load_server_port, save_server_port, 0},
 		{NULL}
 	}},
+	{"Security", (struct IniParam []) {
+		{"Password", load_password, save_password, 0},
+		{NULL}
+	}},
 	{"Client", (struct IniParam []) {
 		{"Orientation", load_orientation, save_orientation, 0},
 		{NULL}
 	}},
+	
 	{NULL}
 };
 

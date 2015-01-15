@@ -9,6 +9,19 @@
 
 char buffer[TRANSFER_BUFFER_SIZE];
 
+ExcCode string_read(int conn_fd, const char **res) {
+	if (read(conn_fd, buffer, LENGTH_SIZE) != LENGTH_SIZE)
+		THROW(ERR_SOCK_READ);
+	int i = -1;
+	int len;
+	READ_LENGTH(len, buffer, i);
+	if (read(conn_fd, buffer, len) != len)
+		THROW(ERR_SOCK_READ);
+	*res = buffer;
+	buffer[len] = 0;
+	return 0;
+}
+
 ExcCode send_buffer(int conn_fd, const char *buffer, int len) {
 	profiler_start(STAGE_TRANSFER);
 	

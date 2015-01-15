@@ -25,6 +25,16 @@ ExcCode load_server_port(const char *key, const char *value) {
 }
 
 
+#define EXPECTED_PASSWORD_SIZE 256
+char expected_password[EXPECTED_PASSWORD_SIZE];
+
+ExcCode load_expected_password(const char *key, const char *value) {
+	strncpy(expected_password, value, EXPECTED_PASSWORD_SIZE - 1);
+	expected_password[EXPECTED_PASSWORD_SIZE - 1] = '\0';
+	return 0;
+}
+
+
 int max_fps;
 
 ExcCode load_max_fps(const char *key, const char *value) {
@@ -180,6 +190,10 @@ const struct IniSection sections[] = {
 	{"Server", (struct IniParam []) {
 		{"Host", load_server_host, NULL, 1},
 		{"Port", load_server_port, NULL, 1},
+		{NULL}
+	}},
+	{"Security", (struct IniParam []) {
+		{"Password", load_expected_password, NULL, 1},
 		{NULL}
 	}},
 	{"Monitor", (struct IniParam []) {

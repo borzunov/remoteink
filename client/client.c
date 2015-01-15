@@ -234,6 +234,37 @@ void query_network() {
 	}
 }
 
+ExcCode client_string_send(const char *str) {
+	int i = 0;
+	int len = strlen(str);
+	WRITE_LENGTH(len, buffer, i);
+	memcpy(buffer + i, str, len);
+	i += len;
+	if (write(conn_fd, buffer, i) < 0)
+		THROW(ERR_SOCK_WRITE);
+	return 0;
+}
+
+ExcCode client_handshake() {
+	TRY(client_string_send(HEADER));
+	
+	TRY(client_string_send(password));
+	if (read(conn_fd, buffer, 1) != 1)
+		THROW(ERR_SOCK_READ);
+	if (buffer[0] == PASSWORD_WRONG) {
+		THROW(ERR_WRONG_PASSWORD);
+	} else
+	if (buffer[0] != PASSWORD_CORRECT)
+		THROW(ERR_PROTOCOL);
+	
+	int i = 0;
+	WRITE_COORD(screen_width, buffer, i);
+	WRITE_COORD(screen_height, buffer, i);
+	if (write(conn_fd, buffer, i) < 0)
+		THROW(ERR_SOCK_WRITE);
+	return 0;
+}
+
 ExcCode client_connect() {
 	query_network();
 	ClearScreen();
@@ -256,14 +287,7 @@ ExcCode client_connect() {
 	) < 0)
 		THROW(ERR_SOCK_CONNECT, server_host, server_port);
 	
-	if (write(conn_fd, HEADER "\n", strlen(HEADER) + 1) < 0)
-		THROW(ERR_SOCK_WRITE);
-
-	int i = 0;
-	WRITE_COORD(screen_width, buffer, i);
-	WRITE_COORD(screen_height, buffer, i);
-	if (write(conn_fd, buffer, COORD_SIZE * 2) < 0)
-		THROW(ERR_SOCK_WRITE);
+	TRY(client_handshake());
 	HideHourglass();
 	
 	TRY(client_mainloop());

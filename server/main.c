@@ -9,6 +9,7 @@
 #include "shortcuts.h"
 #include "transfer.h"
 
+#include <crypt.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -17,13 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-
-#define ERR_SIGPIPE "Connection closed"
-
-#define ERR_ARG_EXCESS "Excess argument is present"
-
-#define ERR_CLIENT_VERSION "Incompatible client version"
 
 
 void show_error(const char *error, int is_fatal) {
@@ -64,6 +58,8 @@ void show_help() {
 	);
 }
 
+
+#define ERR_ARG_EXCESS "Excess argument is present"
 
 ExcCode parse_arguments(int argc, char *argv[]) {
 	int pos = 0;
@@ -294,11 +290,48 @@ ExcCode client_accept() {
 	return 0;
 }
 
+int are_strings_equal_stable(const char *a, const char *b) {
+	// Compare strings "a" and "b" in constant time to prevent timing attacks
+	int res = 1;
+	int i;
+	for (i = 0; a[i] & b[i]; i++)
+		res &= (a[i] == b[i]);
+	if (a[i] | b[i])
+		return 0;
+	return res;
+}
+
+#define ERR_CRYPT "Failed to verify password's hash"
+
+ExcCode check_password(const char *suggested_password, int *is_correct) {
+	if (expected_password[0] == '$') {
+		const char *expected_hash = expected_password;
+		const char *suggested_hash = crypt(suggested_password, expected_hash);
+		if (suggested_hash == NULL)
+			THROW(ERR_CRYPT);
+		*is_correct = are_strings_equal_stable(suggested_hash, expected_hash);
+	} else
+		*is_correct = are_strings_equal_stable(
+				suggested_password, expected_password);
+	return 0;
+}
+
+#define ERR_CLIENT_VERSION "Incompatible client version"
+
 ExcCode client_handshake() {
-	int header_len = strlen(HEADER);
-	if (read(conn_fd, buffer, header_len + 1) != header_len + 1 ||
-			buffer[header_len] != '\n' || strncmp(buffer, HEADER, header_len))
+	const char *line;
+	TRY(string_read(conn_fd, &line));
+	if (strcmp(line, HEADER))
 		THROW(ERR_CLIENT_VERSION);
+		
+	TRY(string_read(conn_fd, &line));
+	int is_correct;
+	TRY(check_password(line, &is_correct));	
+	buffer[0] = is_correct ? PASSWORD_CORRECT : PASSWORD_WRONG;
+	if (write(conn_fd, buffer, 1) < 0)
+		THROW(ERR_SOCK_WRITE);
+	if (!is_correct)
+		THROW(ERR_WRONG_PASSWORD);
 		
 	if (read(conn_fd, buffer, COORD_SIZE * 2) != COORD_SIZE * 2)
 		THROW(ERR_SOCK_READ);
@@ -450,6 +483,8 @@ void sigint_handler(int code) {
 		exit(EXIT_SUCCESS);
 	}
 }
+
+#define ERR_SIGPIPE "Connection closed"
 
 void sigpipe_handler(int code) {
 	if (handle_client_flag) {

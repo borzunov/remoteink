@@ -68,7 +68,7 @@ struct UIControl *ui_label_create(
 
 void ui_button_repaint(struct UIButton *button) {
 	int height = button->font->height + 2 * UI_BUTTON_PADDING;
-	if (button->pressed)
+	if (button->pressed || button->focused)
 		FillArea(
 			button->left, button->top, button->right - button->left, height,
 			LGRAY
@@ -130,6 +130,7 @@ struct UIControl *ui_button_create(
 	button->color = color;
 	button->click_handler = click_handler;
 	button->pressed = 0;
+	button->focused = 0;
 	
 	struct UIControl *control = (struct UIControl *) malloc(
 			sizeof (struct UIControl));

@@ -25,6 +25,10 @@ int font_caption_offset;
 struct UIControl *controls[CONTROLS_MAX_COUNT];
 int controls_top = 0;
 
+struct UIButton *buttons_tab_order[CONTROLS_MAX_COUNT];
+int buttons_tab_order_top = 0;
+int buttons_tab_cur = -1;
+
 #define SCREEN_PADDING 10
 short label_y;
 
@@ -130,6 +134,7 @@ void clear_labels() {
 		1
 	);
 	controls_top = 1;
+	buttons_tab_order_top = 0;
 	
 	label_y += font_title->height + LINE_SPACING + PARAGRAPH_EXTRA_SPACING;
 }
@@ -164,14 +169,16 @@ void add_field(const char *label_caption, const char *text,
 		text, font_label, BLACK,
 		1
 	); // Content
-	controls[controls_top++] = ui_button_create(
+	struct UIControl *button_control = ui_button_create(
 		button_right - 2 * UI_BUTTON_PADDING - button_caption_width,
 		button_right,
 		label_y - UI_BUTTON_PADDING + font_caption_offset, UI_ALIGN_LEFT,
 		button_caption, font_caption, BLACK,
 		button_handler,
 		1
-	); // Button
+	);
+	controls[controls_top++] = button_control; // Button
+	buttons_tab_order[buttons_tab_order_top++] = button_control->data;
 	
 	label_y += font_label->height + LINE_SPACING + PARAGRAPH_EXTRA_SPACING;
 }
@@ -218,26 +225,30 @@ void show_intro() {
 	
 	add_label("    Controls");
 	label_y += PARAGRAPH_EXTRA_SPACING;
+	
 	SetFont(font_caption, BLACK);
 	int left = SCREEN_PADDING;
-	controls[controls_top++] = ui_button_create(
+	struct UIControl *button_control = ui_button_create(
 		left, left + StringWidth(connect_text) + 2 * UI_BUTTON_PADDING,
 		label_y - UI_BUTTON_PADDING + font_caption_offset, UI_ALIGN_LEFT,
 		connect_text, font_caption, BLACK,
 		connect_handler,
 		1
 	);
-	SetFont(font_caption, BLACK);
+	controls[controls_top++] = button_control;
+	buttons_tab_order[buttons_tab_order_top++] = button_control->data;
+	
 	int right = screen_width - SCREEN_PADDING;
-	controls[controls_top++] = ui_button_create(
+	button_control = ui_button_create(
 		right - 2 * UI_BUTTON_PADDING - StringWidth(quit_text), right,
 		label_y - UI_BUTTON_PADDING + font_caption_offset, UI_ALIGN_LEFT,
 		quit_text, font_caption, BLACK,
 		CloseApp,
 		1
 	);
+	controls[controls_top++] = button_control;
+	buttons_tab_order[buttons_tab_order_top++] = button_control->data;
 	label_y += font_label->height + LINE_SPACING + PARAGRAPH_EXTRA_SPACING;
-	// Another button
 	label_y += PARAGRAPH_EXTRA_SPACING;
 	
 	add_label("    Settings");
@@ -250,6 +261,9 @@ void show_intro() {
 	submit_orientation();
 	add_field("Orientation:", orientation_cur_caption,
 			"Switch", switch_orientation_handler);
+	
+	if (buttons_tab_cur != -1 && buttons_tab_cur < buttons_tab_order_top)
+		buttons_tab_order[buttons_tab_cur]->focused = 1;
 	
 	ui_repaint(controls, controls_top);
 }
@@ -299,6 +313,42 @@ int main_handler(int type, int par1, int par2) {
 				case KEY_NEXT:
 					if (stage == STAGE_INTRO)
 						connect_handler();
+					break;
+				
+				case KEY_DOWN:
+					if (stage == STAGE_INTRO && buttons_tab_order_top) {
+						if (buttons_tab_cur == -1)
+							buttons_tab_cur = 0;
+						else {
+							buttons_tab_order[buttons_tab_cur]->focused = 0;
+							
+							buttons_tab_cur++;
+							if (buttons_tab_cur >= buttons_tab_order_top)
+								buttons_tab_cur = 0;
+						}
+						buttons_tab_order[buttons_tab_cur]->focused = 1;
+						ui_repaint(controls, controls_top);
+					}
+					break;
+				case KEY_UP:
+					if (stage == STAGE_INTRO && buttons_tab_order_top) {
+						if (buttons_tab_cur == -1)
+							buttons_tab_cur = buttons_tab_order_top - 1;
+						else {
+							buttons_tab_order[buttons_tab_cur]->focused = 0;
+							
+							buttons_tab_cur--;
+							if (buttons_tab_cur < 0)
+								buttons_tab_cur = buttons_tab_order_top - 1;
+						}
+						buttons_tab_order[buttons_tab_cur]->focused = 1;
+						ui_repaint(controls, controls_top);
+					}
+					break;
+				case KEY_OK:
+					if (stage == STAGE_INTRO && buttons_tab_cur != -1 &&
+							buttons_tab_cur < buttons_tab_order_top)
+						buttons_tab_order[buttons_tab_cur]->click_handler();
 					break;
 			}
 			break;

@@ -51,7 +51,7 @@ struct UIButton {
 	
 	void (*click_handler)();
 	
-	int pressed;
+	int pressed, focused;
 };
 
 #define UI_BUTTON_PADDING 5

@@ -110,12 +110,12 @@ const struct IniSection sections[] = {
 };
 
 
-ExcCode load_config(const char *filename) {
+ExcCode options_config_load(const char *filename) {
 	TRY(ini_load(filename, sections));
 	return 0;
 }
 
-ExcCode save_config(const char *filename) {
+ExcCode options_config_save(const char *filename) {
 	TRY(ini_save(filename, sections));
 	return 0;
 }

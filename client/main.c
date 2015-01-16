@@ -38,7 +38,7 @@ void show_error(const char *error);
 void show_intro();
 
 void change_option_handler(char *buffer) {
-	save_config(config_filename);
+	options_config_save(config_filename);
 	ui_repaint(controls, controls_top);
 }
 
@@ -102,10 +102,12 @@ void edit_password_handler() {
 
 const char *orientation_cur_caption;
 
+int client_width, client_height;
+
 void update_orientation() {
 	SetOrientation(orientation);
-	screen_width = ScreenWidth();
-	screen_height = ScreenHeight();
+	client_width = ScreenWidth();
+	client_height = ScreenHeight();
 }
 
 void submit_orientation() {
@@ -117,7 +119,7 @@ void switch_orientation_handler() {
 	submit_orientation();
 	update_orientation();
 	
-	save_config(config_filename);
+	options_config_save(config_filename);
 	show_intro();
 }
 
@@ -128,7 +130,7 @@ void clear_labels() {
 	for (i = controls_top - 1; i != -1; i--)
 		ui_control_destroy(controls[i]);
 	controls[0] = ui_label_create(
-		SCREEN_PADDING, screen_width - SCREEN_PADDING, label_y,
+		SCREEN_PADDING, client_width - SCREEN_PADDING, label_y,
 		UI_ALIGN_CENTER,
 		TEXT_TITLE, font_title, BLACK,
 		1
@@ -141,7 +143,7 @@ void clear_labels() {
 
 void add_label(const char *message) {
 	controls[controls_top++] = ui_label_create(
-		SCREEN_PADDING, screen_width - SCREEN_PADDING, label_y, UI_ALIGN_LEFT,
+		SCREEN_PADDING, client_width - SCREEN_PADDING, label_y, UI_ALIGN_LEFT,
 		message, font_label, BLACK,
 		1
 	);
@@ -155,7 +157,7 @@ void add_field(const char *label_caption, const char *text,
 		const char *button_caption, void (*button_handler)()) {
 	SetFont(font_caption, BLACK);
 	int button_caption_width = StringWidth(button_caption);
-	int button_right = screen_width - SCREEN_PADDING;
+	int button_right = client_width - SCREEN_PADDING;
 			
 	controls[controls_top++] = ui_label_create(
 		SCREEN_PADDING, FIELD_TEXT_MARGIN_LEFT,
@@ -164,7 +166,7 @@ void add_field(const char *label_caption, const char *text,
 		1
 	); // Caption
 	controls[controls_top++] = ui_label_create(
-		FIELD_TEXT_MARGIN_LEFT, screen_width - FIELD_TEXT_MARGIN_LEFT,
+		FIELD_TEXT_MARGIN_LEFT, client_width - FIELD_TEXT_MARGIN_LEFT,
 		label_y, UI_ALIGN_LEFT,
 		text, font_label, BLACK,
 		1
@@ -197,13 +199,13 @@ void agreement_accept_handler(int button) {
 		return;
 	}
 	agreement_accepted = 1;
-	save_config(config_filename);
+	options_config_save(config_filename);
 }
 
 pthread_t client_thread;
 
 void *start_client_connect(void *arg) {
-	if (client_connect())
+	if (client_connect(client_width, client_height))
 		show_error(exc_message);
 	else
 		show_intro();
@@ -255,7 +257,7 @@ void show_intro() {
 	controls[controls_top++] = button_control;
 	buttons_tab_order[buttons_tab_order_top++] = button_control->data;
 	
-	int right = screen_width - SCREEN_PADDING;
+	int right = client_width - SCREEN_PADDING;
 	button_control = ui_button_create(
 		right - 2 * UI_BUTTON_PADDING - StringWidth(quit_text), right,
 		label_y - UI_BUTTON_PADDING + font_caption_offset, UI_ALIGN_LEFT,
@@ -297,7 +299,6 @@ void show_error(const char *error) {
 }
 
 void stop_monitor_handler() {
-	client_process = 0;
 	client_shutdown();
 }
 
@@ -306,7 +307,7 @@ int main_handler(int type, int par1, int par2) {
 		case EVT_INIT:
 			get_default_config_path("inkmonitor.ini",
 					config_filename, CONFIG_FILENAME_SIZE);
-			load_config(config_filename);
+			options_config_load(config_filename);
 			
 			update_orientation();
 			

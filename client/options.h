@@ -4,8 +4,8 @@
 #include "../common/exceptions.h"
 
 
-extern ExcCode load_config(const char *filename);
-extern ExcCode save_config(const char *filename);
+extern ExcCode options_config_load(const char *filename);
+extern ExcCode options_config_save(const char *filename);
 
 
 extern char server_host[];

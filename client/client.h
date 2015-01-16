@@ -4,13 +4,8 @@
 #include "../common/exceptions.h"
 
 
-ExcCode client_connect();
-void client_shutdown();
-
-
-extern unsigned screen_width, screen_height;
-
-extern int client_process;
+extern ExcCode client_connect(int client_width, int client_height);
+extern void client_shutdown();
 
 
 #endif

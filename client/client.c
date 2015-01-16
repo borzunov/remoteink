@@ -8,8 +8,6 @@
 
 #define ERR_UNSUPPORTED_COMMAND "Unsupported command is received"
 
-unsigned screen_width, screen_height;
-
 #define TRANSFER_BUFFER_SIZE 4 * 1024 * 1024
 char buffer[TRANSFER_BUFFER_SIZE];
 
@@ -26,7 +24,8 @@ ExcCode client_send_confirm() {
 	return 0;
 }
 
-ExcCode client_exec(const char *commands, int len, int *processed) {
+ExcCode client_exec(const char *commands, int len, int *processed,
+		int client_width, int client_height) {
 	int i;
 	unsigned j, count, w, h;
 	for (i = 0; i < len; i++) {
@@ -49,8 +48,8 @@ ExcCode client_exec(const char *commands, int len, int *processed) {
 				READ_COUNT(count, commands, i);
 				
 				count += x;
-				y += count / screen_width;
-				x = count % screen_width;
+				y += count / client_width;
+				x = count % client_width;
 				break;
 			case CMD_PUT_REPEAT:
 				if (i + COUNT_SIZE + 1 > len) {
@@ -61,9 +60,9 @@ ExcCode client_exec(const char *commands, int len, int *processed) {
 				
 				for (j = 0; j < count; j++) {
 					DrawPixel(x, y, color);
-					if (++x == screen_width) {
+					if (++x == client_width) {
 						x = 0;
-						if (++y == screen_height)
+						if (++y == client_height)
 							y = 0;
 					}
 				}
@@ -76,9 +75,9 @@ ExcCode client_exec(const char *commands, int len, int *processed) {
 				READ_COLOR(color, commands, i);
 				
 				DrawPixel(x, y, color);
-				if (++x == screen_width) {
+				if (++x == client_width) {
 					x = 0;
-					if (++y == screen_height)
+					if (++y == client_height)
 						y = 0;
 				}
 				break;
@@ -198,10 +197,11 @@ ExcCode client_exec(const char *commands, int len, int *processed) {
 }
 
 void client_shutdown() {
+	client_process = 0;
 	shutdown(conn_fd, SHUT_RDWR);
 }
 
-ExcCode client_mainloop() {
+ExcCode client_mainloop(int client_width, int client_height) {
 	x = 0;
 	y = 0;
 	color = 0;
@@ -217,7 +217,8 @@ ExcCode client_mainloop() {
 			THROW(ERR_SOCK_READ);
 		
 		int executed_size;
-		TRY(client_exec(buffer, prefix_size + read_size, &executed_size));
+		TRY(client_exec(buffer, prefix_size + read_size, &executed_size,
+				client_width, client_height));
 		prefix_size += read_size - executed_size;
 		memmove(buffer, buffer + executed_size, prefix_size);
 	}
@@ -245,7 +246,7 @@ ExcCode client_string_send(const char *str) {
 	return 0;
 }
 
-ExcCode client_handshake() {
+ExcCode client_handshake(int client_width, int client_height) {
 	TRY(client_string_send(HEADER));
 	
 	TRY(client_string_send(password));
@@ -258,14 +259,14 @@ ExcCode client_handshake() {
 		THROW(ERR_PROTOCOL);
 	
 	int i = 0;
-	WRITE_COORD(screen_width, buffer, i);
-	WRITE_COORD(screen_height, buffer, i);
+	WRITE_COORD(client_width, buffer, i);
+	WRITE_COORD(client_height, buffer, i);
 	if (write(conn_fd, buffer, i) < 0)
 		THROW(ERR_SOCK_WRITE);
 	return 0;
 }
 
-ExcCode client_connect() {
+ExcCode client_connect(int client_width, int client_height) {
 	query_network();
 	ClearScreen();
 	ShowHourglass();
@@ -287,10 +288,10 @@ ExcCode client_connect() {
 	) < 0)
 		THROW(ERR_SOCK_CONNECT, server_host, server_port);
 	
-	TRY(client_handshake());
+	TRY(client_handshake(client_width, client_height));
 	HideHourglass();
 	
-	TRY(client_mainloop());
+	TRY(client_mainloop(client_width, client_height));
 	
 	if (close(conn_fd) < 0)
 		THROW(ERR_SOCK_CLOSE);

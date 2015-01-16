@@ -3,10 +3,9 @@
 
 #include <xcb/xcb.h>
 
-#include "../common/exceptions.h"
 
-
-extern int screen_width, screen_height, client_width, client_height;
+extern void control_screen_dimensions_set(int width, int height);
+extern void control_client_dimensions_set(int width, int height);
 
 struct WindowContext {
 	xcb_window_t window;
@@ -17,18 +16,15 @@ struct WindowContext {
 	int frame_width, frame_height;
 };
 
-extern pthread_mutex_t active_context_lock;
-extern struct WindowContext *active_context;
-extern int window_tracking_enabled;
-
-extern void activate_window_context(xcb_window_t window);
-extern void update_frame_params();
+extern pthread_mutex_t control_lock;
+extern const struct WindowContext *control_context_get();
+extern void control_context_select(xcb_window_t window);
+extern void control_update_frame();
 
 
-extern const char *label_text;
-extern long long label_creation_time_nsec;
-
-extern void show_label(const char *text);
+extern void control_label_get(const char **text,
+		long long *creation_time_nsec);
+extern void control_label_set(const char *text);
 
 extern void reset_position_handler();
 extern void move_up_handler();

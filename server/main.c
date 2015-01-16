@@ -85,21 +85,21 @@ ExcCode parse_arguments(int argc, char *argv[]) {
 }
 
 
-void *start_handle_shortcuts(void *arg) {
-	if (handle_shortcuts(shortcuts))
+void *handle_shortcuts(void *arg) {
+	if (shortcuts_handle_start(shortcuts))
 		show_error(exc_message, 0);
 	return NULL;
 }
 
 
 void track_focused_window() {
-	if (active_context != NULL)
-		update_frame_params();
+	if (control_context_get() != NULL)
+		control_update_frame();
 	
 	xcb_window_t window;
-	if (!window_tracking_enabled || window_get_focused(&window))
-		window_get_root(&window);
-	activate_window_context(window);
+	if (!window_tracking_enabled || screen_get_focused(&window))
+		screen_get_root(&window);
+	control_context_select(window);
 }
 
 
@@ -108,16 +108,15 @@ int serv_fd, conn_fd;
 
 ExcCode return_cursor() {
 	int x, y, same_screen;
-	if (cursor_get_position(&x, &y, &same_screen))
+	if (screen_cursor_get_position(&x, &y, &same_screen))
 		return 0;
-	int new_x = MAX(x, active_context->frame_left);
-	new_x = MIN(new_x,
-			active_context->frame_left + active_context->frame_width);
-	int new_y = MAX(y, active_context->frame_top);
-	new_y = MIN(new_y,
-			active_context->frame_top + active_context->frame_height);
+	const struct WindowContext *context = control_context_get();
+	int new_x = MAX(x, context->frame_left);
+	new_x = MIN(new_x, context->frame_left + context->frame_width);
+	int new_y = MAX(y, context->frame_top);
+	new_y = MIN(new_y, context->frame_top + context->frame_height);
 	if (!same_screen || x != new_x || y != new_y)
-		cursor_set_position(new_x, new_y);
+		screen_cursor_set_position(new_x, new_y);
 	return 0;
 }
 
@@ -165,19 +164,22 @@ ExcCode image_resize(Imlib_Image *image, int dest_width, int dest_height) {
 #define LABEL_BOX_PADDING 5
 
 ExcCode draw_label(Imlib_Image image) {
-	if (label_text == NULL)
+	const char *text;
+	long long creation_time_nsec;
+	control_label_get(&text, &creation_time_nsec);
+	if (text == NULL)
 		return 0;
-	if (get_time_nsec() - label_creation_time_nsec > LABEL_SHOW_TIME_NSEC) {
-		label_text = NULL;
+	if (get_time_nsec() - creation_time_nsec > LABEL_SHOW_TIME_NSEC) {
+		text = NULL;
 		return 0;
 	}
 	
 	int label_width, label_height;
-	imlib_get_text_size(label_text, &label_width, &label_height);
+	imlib_get_text_size(text, &label_width, &label_height);
 	imlib_context_set_image(image);
 	int box_left = LABEL_BOX_MARGIN;
-	int box_top = client_height - LABEL_BOX_MARGIN - 2 * LABEL_BOX_PADDING -
-			label_height;
+	int box_top = imlib_image_get_height() -
+			LABEL_BOX_MARGIN - 2 * LABEL_BOX_PADDING - label_height;
 	int box_width = 2 * LABEL_BOX_PADDING + label_width;
 	int box_height = 2 * LABEL_BOX_PADDING + label_height;
 	imlib_context_set_color(255, 255, 255, 255);
@@ -185,7 +187,7 @@ ExcCode draw_label(Imlib_Image image) {
 	imlib_context_set_color(0, 0, 0, 255);
 	imlib_image_draw_rectangle(box_left, box_top, box_width, box_height);
 	imlib_text_draw(box_left + LABEL_BOX_PADDING, box_top + LABEL_BOX_PADDING,
-			label_text);
+			text);
 	return 0;
 }
 
@@ -204,17 +206,18 @@ ExcCode image_turn_to_data(Imlib_Image image, unsigned **res) {
 	return 0;
 }
 
-ExcCode get_screenshot_data(unsigned **image_data) {
+ExcCode get_screenshot_data(unsigned **image_data,
+		int client_width, int client_height) {
 	track_focused_window();
 	if (cursor_capturing_enabled)
 		TRY(return_cursor());
+	const struct WindowContext *context = control_context_get();
 	Imlib_Image image;
-	TRY(screenshot_get(
-			active_context->frame_left, active_context->frame_top,
-			active_context->frame_width, active_context->frame_height,
+	TRY(screen_shot(
+			context->frame_left, context->frame_top,
+			context->frame_width, context->frame_height,
 			&image));
-	TRY(image_expand(&image,
-			active_context->frame_width, active_context->frame_height));
+	TRY(image_expand(&image, context->frame_width, context->frame_height));
 	TRY(image_resize(&image, client_width, client_height));
 	TRY(draw_label(image));
 	TRY(image_turn_to_data(image, image_data));
@@ -224,13 +227,15 @@ ExcCode get_screenshot_data(unsigned **image_data) {
 
 int has_stats = 0;
 
-ExcCode send_first_frame(unsigned **image_data) {
-	pthread_mutex_lock(&active_context_lock);
+ExcCode send_first_frame(unsigned **image_data,
+		int client_width, int client_height) {
+	pthread_mutex_lock(&control_lock);
 	#undef FINALLY
-	#define FINALLY pthread_mutex_unlock(&active_context_lock);
+	#define FINALLY pthread_mutex_unlock(&control_lock);
 	
-	TRY(get_screenshot_data(image_data));
-	TRY(image_send_all(conn_fd, *image_data, client_width, client_height));
+	TRY(get_screenshot_data(image_data, client_width, client_height));
+	TRY(transfer_image_send_all(conn_fd,
+			*image_data, client_width, client_height));
 	
 	FINALLY;
 	#undef FINALLY
@@ -241,24 +246,25 @@ ExcCode send_first_frame(unsigned **image_data) {
 char conn_check_char = CONN_CHECK;
 
 ExcCode send_next_frame(unsigned **image_data,
+		int client_width, int client_height,
 		int region_width, int region_height) {
 	// Check whether connection is dead. If so, SIGPIPE will be sent.
 	if (write(conn_fd, &conn_check_char, sizeof (char)) < 0)
 		THROW(ERR_SOCK_WRITE);
 	
-	pthread_mutex_lock(&active_context_lock);
+	pthread_mutex_lock(&control_lock);
 	#undef FINALLY
-	#define FINALLY pthread_mutex_unlock(&active_context_lock);
+	#define FINALLY pthread_mutex_unlock(&control_lock);
 	
 	profiler_start(STAGE_SHOT);
 	unsigned *next_image_data;
-	TRY(get_screenshot_data(&next_image_data));
+	TRY(get_screenshot_data(&next_image_data, client_width, client_height));
 	profiler_finish(STAGE_SHOT);
 	
 	unsigned i, j;
 	for (i = 0; i < height_divisor; i++)
 		for (j = 0; j < width_divisor; j++)
-			TRY(image_send_diff(
+			TRY(transfer_image_send_diff(
 				conn_fd, *image_data, next_image_data,
 				client_width, client_height,
 				j * region_width, i * region_height,
@@ -267,7 +273,7 @@ ExcCode send_next_frame(unsigned **image_data,
 	free(*image_data);
 	*image_data = next_image_data;
 
-	traffic_uncompressed += client_width * client_height * 4;
+	profiler_traffic_count_uncompressed(client_width * client_height * 4);
 	has_stats = 1;
 	
 	FINALLY;
@@ -318,41 +324,45 @@ ExcCode check_password(const char *suggested_password, int *is_correct) {
 
 #define ERR_CLIENT_VERSION "Incompatible client version"
 
-ExcCode client_handshake() {
+#define TRANSFER_BUFFER_SIZE 256
+char transfer_buffer[TRANSFER_BUFFER_SIZE];
+
+ExcCode client_handshake(int *client_width, int *client_height) {
 	const char *line;
-	TRY(string_read(conn_fd, &line));
+	TRY(transfer_recv_string(conn_fd, &line));
 	if (strcmp(line, HEADER))
 		THROW(ERR_CLIENT_VERSION);
 		
-	TRY(string_read(conn_fd, &line));
+	TRY(transfer_recv_string(conn_fd, &line));
 	int is_correct;
 	TRY(check_password(line, &is_correct));	
-	buffer[0] = is_correct ? PASSWORD_CORRECT : PASSWORD_WRONG;
-	if (write(conn_fd, buffer, 1) < 0)
+	transfer_buffer[0] = is_correct ? PASSWORD_CORRECT : PASSWORD_WRONG;
+	if (write(conn_fd, transfer_buffer, 1) < 0)
 		THROW(ERR_SOCK_WRITE);
 	if (!is_correct)
 		THROW(ERR_WRONG_PASSWORD);
 		
-	if (read(conn_fd, buffer, COORD_SIZE * 2) != COORD_SIZE * 2)
+	if (read(conn_fd, transfer_buffer, COORD_SIZE * 2) != COORD_SIZE * 2)
 		THROW(ERR_SOCK_READ);
 	int i = -1;
-	READ_COORD(client_width, buffer, i);
-	READ_COORD(client_height, buffer, i);
+	READ_COORD(*client_width, transfer_buffer, i);
+	READ_COORD(*client_height, transfer_buffer, i);
 	return 0;
 }
 
-ExcCode client_mainloop() {
-	show_label("Connected");
+ExcCode client_mainloop(int client_width, int client_height) {
+	control_label_set("Connected");
 	
 	unsigned *image_data;
-	TRY(send_first_frame(&image_data));
+	TRY(send_first_frame(&image_data, client_width, client_height));
 	
 	unsigned region_width = client_width / width_divisor;
 	unsigned region_height = client_height / height_divisor;
 	while (handle_client_flag) {
 		long long frame_start_time = get_time_nsec();
 		
-		TRY(send_next_frame(&image_data, region_width, region_height));
+		TRY(send_next_frame(&image_data, client_width, client_height,
+				region_width, region_height));
 
 		long long frame_duration = get_time_nsec() - frame_start_time;
 		long long sleep_time = NSECS_PER_SEC / max_fps - frame_duration;
@@ -379,6 +389,8 @@ ExcCode server_create() {
 }
 
 ExcCode server_setup() {
+	profiler_traffic_init();
+	
 	struct hostent *serv = gethostbyname(server_host);
 	if (serv == NULL)
 		THROW(ERR_SOCK_RESOLVE, server_host);
@@ -408,9 +420,11 @@ ExcCode server_handle_client() {
 	}
 	
 	printf("[+] Accepted client connection\n");
-	TRY(client_handshake());
+	int client_width, client_height;
+	TRY(client_handshake(&client_width, &client_height));
+	control_client_dimensions_set(client_width, client_height);
 	printf("    Reader resolution: %ux%u\n", client_width, client_height);
-	TRY(client_mainloop());
+	TRY(client_mainloop(client_width, client_height));
 	
 	FINALLY;
 	#undef FINALLY
@@ -425,6 +439,19 @@ void server_shutdown() {
 }
 
 
+ExcCode screen_of_display(xcb_connection_t *c, int screen,
+		xcb_screen_t **res) {
+	xcb_screen_iterator_t iter = xcb_setup_roots_iterator(xcb_get_setup(c));
+	for (int i = 0; iter.rem; i++) {
+		if (i == screen) {
+			*res = iter.data;
+			return 0;
+		}
+		xcb_screen_next(&iter);
+	}
+	THROW(ERR_X_REQUEST);
+}
+
 ExcCode serve(int argc, char *argv[]) {
 	printf("InkMonitor v0.01 Alpha 4 - Server\n");
 	
@@ -432,12 +459,21 @@ ExcCode serve(int argc, char *argv[]) {
 			config_filename, CONFIG_FILENAME_SIZE);
 	TRY(parse_arguments(argc, argv));
 	
-	TRY(screenshot_init());
-	screen_width = screen->width_in_pixels;
-	screen_height = screen->height_in_pixels;
-	TRY(shortcuts_init());
+	int default_screen_no;
+	xcb_connection_t *display = xcb_connect(NULL, &default_screen_no);
+	if (xcb_connection_has_error(display))
+		THROW(ERR_X_CONNECT);
+	xcb_screen_t *screen;
+	TRY(screen_of_display(display, default_screen_no, &screen));
+	int screen_width = screen->width_in_pixels;
+	int screen_height = screen->height_in_pixels;
+	xcb_window_t root = screen->root;
+	control_screen_dimensions_set(screen_width, screen_height);
 	
-	TRY(load_config(config_filename));
+	TRY(screen_init(display, screen, root));
+	TRY(shortcuts_init(display, screen, root));
+	
+	TRY(options_config_load(config_filename));
 	printf(
 		"    Configuration: %s\n"
 		"    Monitor resolution: %dx%d\n",
@@ -451,10 +487,10 @@ ExcCode serve(int argc, char *argv[]) {
 	
 	pthread_t shortcuts_thread;
 	int shortcuts_res;
-	if (pthread_mutex_init(&active_context_lock, NULL))
+	if (pthread_mutex_init(&control_lock, NULL))
 		THROW(ERR_MUTEX_INIT);
 	if (pthread_create(&shortcuts_thread, NULL,
-			start_handle_shortcuts, &shortcuts_res))
+			handle_shortcuts, &shortcuts_res))
 		THROW(ERR_THREAD_CREATE);
 	
 	TRY(server_create());

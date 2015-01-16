@@ -7,9 +7,11 @@
 
 #include <unistd.h>
 
-char buffer[TRANSFER_BUFFER_SIZE];
+#define MAX_SCREEN_SIDE 2048
+#define MAX_SENT_DATA_SIZE (4 * MAX_SCREEN_SIDE * MAX_SCREEN_SIDE)
+char buffer[MAX_SENT_DATA_SIZE];
 
-ExcCode string_read(int conn_fd, const char **res) {
+ExcCode transfer_recv_string(int conn_fd, const char **res) {
 	if (read(conn_fd, buffer, LENGTH_SIZE) != LENGTH_SIZE)
 		THROW(ERR_SOCK_READ);
 	int i = -1;
@@ -42,7 +44,7 @@ ExcCode wait_confirm(int conn_fd) {
 	return 0;
 }
 
-ExcCode image_send_all(
+ExcCode transfer_image_send_all(
 	int conn_fd, const unsigned *image, unsigned width, unsigned height
 ) {
 	unsigned x, y;
@@ -68,7 +70,7 @@ ExcCode image_send_all(
 
 unsigned color = 0;
 
-ExcCode image_send_diff(
+ExcCode transfer_image_send_diff(
 	int conn_fd, const unsigned *prev_image, const unsigned *next_image,
 	unsigned client_width, unsigned client_height,
 	unsigned region_left, unsigned region_top,
@@ -88,7 +90,7 @@ ExcCode image_send_diff(
 	WRITE_COORD(region_left, buffer, i);
 	WRITE_COORD(region_top, buffer, i);
 	
-	traffic_diffs += 5;
+	int traffic_diffs = 5;
 	
 	unsigned x1 = region_right - 1;
 	unsigned y1 = region_bottom - 1;
@@ -164,6 +166,7 @@ ExcCode image_send_diff(
 	}
 	
 	profiler_finish(STAGE_DIFF);
+	profiler_traffic_count_compressed(traffic_diffs);
 		
 	if (need_send) {
 		TRY(send_buffer(conn_fd, buffer, i));

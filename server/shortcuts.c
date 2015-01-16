@@ -11,9 +11,18 @@
 #include <xcb/xcb_keysyms.h>
 
 
+xcb_connection_t *display;
+xcb_screen_t *screen;
+xcb_window_t root;
+
 xcb_key_symbols_t *key_symbols_table;
 
-ExcCode shortcuts_init() {
+ExcCode shortcuts_init(xcb_connection_t *cur_display,
+		xcb_screen_t *cur_screen, xcb_window_t cur_root) {
+	display = cur_display;
+	screen = cur_screen;
+	root = cur_root;
+			
 	key_symbols_table = xcb_key_symbols_alloc(display);
 	if (key_symbols_table == NULL)
 		THROW(ERR_X_REQUEST);
@@ -41,7 +50,7 @@ struct ModifierRecord modifier_records[] = {
 #define ERR_SHORTCUT_UNKNOWN_MODIFIER "Unknown modifier in shortcut \"%s\""
 #define ERR_SHORTCUT_UNKNOWN_KEY "Unknown key \"%s\" in shortcut \"%s\""
 
-ExcCode parse_hotkey(const char *str, struct Hotkey *res) {
+ExcCode shortcuts_parse(const char *str, struct Hotkey *res) {
 	int word_begin = 0;
 	res->modifiers = 0;
 	int i;
@@ -102,17 +111,17 @@ ExcCode grab_hotkey(const struct Hotkey *hotkey) {
 }
 
 
-ExcCode handle_shortcuts(const struct Shortcut shortcuts[]) {
+ExcCode shortcuts_handle_start(const struct Shortcut shortcuts[]) {
 	for (int i = 0; shortcuts[i].handler != NULL; i++)
 		TRY(grab_hotkey(&shortcuts[i].hotkey));
 	
 	xcb_generic_event_t *event;
 	while ((event = xcb_wait_for_event(display)) != NULL) {
-		pthread_mutex_lock(&active_context_lock);
+		pthread_mutex_lock(&control_lock);
 		
 		do {
 			if ((event->response_type & ~0x80) == XCB_KEY_RELEASE &&
-					active_context != NULL) {
+					control_context_get() != NULL) {
 				xcb_key_release_event_t *key_release_event =
 						(xcb_key_release_event_t *) event;
 						
@@ -133,7 +142,7 @@ ExcCode handle_shortcuts(const struct Shortcut shortcuts[]) {
 			free(event);
 		} while ((event = xcb_poll_for_event(display)) != NULL);
 		
-		pthread_mutex_unlock(&active_context_lock);
+		pthread_mutex_unlock(&control_lock);
 	}
 	THROW(ERR_X_REQUEST);
 }

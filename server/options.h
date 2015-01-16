@@ -29,7 +29,7 @@ extern char stats_filename[];
 extern struct Shortcut shortcuts[];
 
 
-ExcCode load_config(const char *filename);
+ExcCode options_config_load(const char *filename);
 
 
 #endif

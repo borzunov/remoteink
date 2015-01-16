@@ -178,7 +178,7 @@ ExcCode load_shortcut(const char *key, const char *value) {
 		THROW(ERR_SHORTCUT_UNKNOWN_ACTION, key, value);
 	
 	struct Hotkey hotkey;
-	TRY(parse_hotkey(value, &hotkey));
+	TRY(shortcuts_parse(value, &hotkey));
 	shortcuts[shortcuts_count].hotkey = hotkey;
 	shortcuts[shortcuts_count].handler = handler;
 	shortcuts_count++;
@@ -232,7 +232,7 @@ const struct IniSection sections[] = {
 };
 
 
-ExcCode load_config(const char *filename) {
+ExcCode options_config_load(const char *filename) {
 	TRY(ini_load(filename, sections));
 	shortcuts[shortcuts_count].handler = NULL;
 	return 0;

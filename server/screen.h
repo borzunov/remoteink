@@ -7,22 +7,20 @@
 #include <xcb/xcb.h>
 
 
-extern xcb_connection_t *display;
-extern xcb_screen_t *screen;
-extern xcb_window_t root;
-
-extern ExcCode screenshot_init();
-extern ExcCode screenshot_get(int x, int y, int width, int height,
+extern ExcCode screen_init(xcb_connection_t *cur_display,
+		xcb_screen_t *cur_screen, xcb_window_t cur_root);
+extern ExcCode screen_shot(int x, int y, int width, int height,
 		Imlib_Image *res);
 
-extern ExcCode cursor_get_position(int *x, int *y, int *same_screen);
-extern ExcCode cursor_set_position(int x, int y);
+extern ExcCode screen_cursor_get_position(int *x, int *y, int *same_screen);
+extern ExcCode screen_cursor_set_position(int x, int y);
 
-extern void window_get_root(xcb_window_t *res);
-extern ExcCode window_get_focused(xcb_window_t *res);
-extern ExcCode window_get_geometry(xcb_window_t window,
+extern void screen_get_root(xcb_window_t *res);
+extern ExcCode screen_get_focused(xcb_window_t *res);
+extern ExcCode screen_window_get_geometry(xcb_window_t window,
 		int *left, int *top, int *width, int *height);
-extern ExcCode window_resize(xcb_window_t window, int width, int height);
+extern ExcCode screen_window_resize(
+		xcb_window_t window, int width, int height);
 
 
 #endif

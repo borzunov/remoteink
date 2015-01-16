@@ -8,26 +8,13 @@
 #include <xcb/xfixes.h>
 
 
-ExcCode screen_of_display(xcb_connection_t *c, int screen,
-		xcb_screen_t **res) {
-	xcb_screen_iterator_t iter = xcb_setup_roots_iterator(xcb_get_setup(c));
-	for (int i = 0; iter.rem; i++) {
-		if (i == screen) {
-			*res = iter.data;
-			return 0;
-		}
-		xcb_screen_next(&iter);
-	}
-	THROW(ERR_X_REQUEST);
-}
-
 xcb_connection_t *display;
 xcb_screen_t *screen;
 xcb_window_t root;
 
 #define ERR_CURSOR "Cursor capturing isn't supported"
 
-ExcCode screenshot_cursor_init() {
+ExcCode screen_cursor_init() {
 	xcb_xfixes_query_version_cookie_t cookie =
 			xcb_xfixes_query_version(display,
 			XCB_XFIXES_MAJOR_VERSION, XCB_XFIXES_MINOR_VERSION);
@@ -38,19 +25,17 @@ ExcCode screenshot_cursor_init() {
 	return 0;
 }
 
-ExcCode screenshot_init() {
-	int default_screen_no;
-	display = xcb_connect(NULL, &default_screen_no);
-	if (xcb_connection_has_error(display))
-		THROW(ERR_X_CONNECT);
-	TRY(screen_of_display(display, default_screen_no, &screen));
-	root = screen->root;
+ExcCode screen_init(xcb_connection_t *cur_display,
+		xcb_screen_t *cur_screen, xcb_window_t cur_root) {
+	display = cur_display;
+	screen = cur_screen;
+	root = cur_root;
 	
-	screenshot_cursor_init();
+	screen_cursor_init();
 	return 0;
 }
 
-ExcCode screenshot_cursor_blend(int x, int y, Imlib_Image image) {
+ExcCode screen_cursor_blend(int x, int y, Imlib_Image image) {
 	xcb_xfixes_get_cursor_image_cookie_t cookie =
 			xcb_xfixes_get_cursor_image(display);
 	xcb_xfixes_get_cursor_image_reply_t *reply =
@@ -81,7 +66,7 @@ ExcCode screenshot_cursor_blend(int x, int y, Imlib_Image image) {
 
 #define XCB_ALL_PLANES (~0)
 
-ExcCode screenshot_get(int x, int y, int width, int height,
+ExcCode screen_shot(int x, int y, int width, int height,
 		Imlib_Image *res) {
 	int x1 = x + width;
 	int y1 = y + height;
@@ -105,7 +90,7 @@ ExcCode screenshot_get(int x, int y, int width, int height,
 		THROW(ERR_IMAGE);
 		
 	if (cursor_capturing_enabled)
-		screenshot_cursor_blend(x, y, *res);
+		screen_cursor_blend(x, y, *res);
 	return 0;
 }
 
@@ -164,7 +149,7 @@ void find_toplevel_window(xcb_window_t window, xcb_window_t *res) {
 }
 
 
-ExcCode cursor_get_position(int *x, int *y, int *same_screen) {
+ExcCode screen_cursor_get_position(int *x, int *y, int *same_screen) {
 	xcb_query_pointer_cookie_t cookie =
 			xcb_query_pointer(display, root);
 	xcb_query_pointer_reply_t *reply =
@@ -178,7 +163,7 @@ ExcCode cursor_get_position(int *x, int *y, int *same_screen) {
 	return 0;
 }
 
-ExcCode cursor_set_position(int x, int y) {
+ExcCode screen_cursor_set_position(int x, int y) {
 	xcb_void_cookie_t cookie =
 			xcb_warp_pointer(display, XCB_NONE, root, 0, 0, 0, 0, x, y);
 	if (xcb_request_check(display, cookie) != NULL)
@@ -189,11 +174,11 @@ ExcCode cursor_set_position(int x, int y) {
 }
 
 
-void window_get_root(xcb_window_t *res) {
+void screen_get_root(xcb_window_t *res) {
 	*res = root;
 }
 
-ExcCode window_get_focused(xcb_window_t *res) {
+ExcCode screen_get_focused(xcb_window_t *res) {
 	xcb_get_input_focus_cookie_t cookie = xcb_get_input_focus(display);
 	xcb_get_input_focus_reply_t *reply =
 			xcb_get_input_focus_reply(display, cookie, NULL);
@@ -222,7 +207,7 @@ ExcCode window_get_real_geometry(xcb_window_t window,
 	return 0;
 }
 
-ExcCode window_get_geometry(xcb_window_t window,
+ExcCode screen_window_get_geometry(xcb_window_t window,
 		int *left, int *top, int *width, int *height) {
 	find_toplevel_window(window, &window);
 	get_net_frame_window(window, &window);
@@ -275,7 +260,7 @@ void get_client_window(xcb_window_t window, xcb_window_t *res) {
 		*res = window;
 }
 
-ExcCode window_unmaximize(xcb_window_t window) {
+ExcCode screen_window_unmaximize(xcb_window_t window) {
 	xcb_atom_t net_wm_state,
 			net_wm_state_maximized_horz, net_wm_state_maximized_vert;
 	TRY(create_atom("_NET_WM_STATE", 0, &net_wm_state));
@@ -306,15 +291,15 @@ ExcCode window_unmaximize(xcb_window_t window) {
 }
 
 
-ExcCode window_resize(xcb_window_t window, int width, int height) {
+ExcCode screen_window_resize(xcb_window_t window, int width, int height) {
 	xcb_window_t client_window;
 	find_toplevel_window(window, &client_window);
 	get_client_window(client_window, &client_window);
 	
-	TRY(window_unmaximize(client_window));
+	TRY(screen_window_unmaximize(client_window));
 	
 	int coord, prev_width, prev_height;
-	TRY(window_get_geometry(window, &coord, &coord,
+	TRY(screen_window_get_geometry(window, &coord, &coord,
 			&prev_width, &prev_height));
 	int prev_client_window_width, prev_client_window_height;
 	TRY(window_get_real_geometry(client_window, &coord, &coord,

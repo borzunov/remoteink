@@ -8,21 +8,36 @@
 #include <math.h>
 #include <stdlib.h>
 
+
 int screen_width, screen_height, client_width, client_height,
 		window_left, window_top, window_width, window_height;
 
+void control_screen_dimensions_set(int width, int height) {
+	screen_width = width;
+	screen_height = height;
+}
+
+void control_client_dimensions_set(int width, int height) {
+	client_width = width;
+	client_height = height;
+}
+
 struct WindowContext *contexts_list = NULL;
 
-pthread_mutex_t active_context_lock;
+pthread_mutex_t control_lock;
 struct WindowContext *active_context = NULL;
+
+const struct WindowContext *control_context_get() {
+	return active_context;
+}
 
 void reset_scale();
 void reset_position();
 
-void activate_window_context(xcb_window_t window) {
-	if (window_get_geometry(window,
+void control_context_select(xcb_window_t window) {
+	if (screen_window_get_geometry(window,
 			&window_left, &window_top, &window_width, &window_height))
-		window_get_root(&window);
+		screen_get_root(&window);
 	
 	if (active_context != NULL && active_context->window == window)
 		return;
@@ -44,7 +59,7 @@ void activate_window_context(xcb_window_t window) {
 	active_context = cur;
 	
 	reset_scale();
-	update_frame_params();
+	control_update_frame();
 	reset_position();
 }
 
@@ -63,7 +78,7 @@ void normalize_coord(int *coord, int frame_side, int screen_side) {
 	}
 }
 
-void update_frame_params() {
+void control_update_frame() {
 	apply_scale(active_context->scale);
 	if (active_context->frame_width > screen_width &&
 			active_context->frame_height > screen_height) {
@@ -84,7 +99,12 @@ void update_frame_params() {
 const char *label_text = NULL;
 long long label_creation_time_nsec;
 
-void show_label(const char *text) {
+void control_label_get(const char **text, long long *creation_time_nsec) {
+	*text = label_text;
+	*creation_time_nsec = label_creation_time_nsec;
+}
+
+void control_label_set(const char *text) {
 	label_text = text;
 	label_creation_time_nsec = get_time_nsec();
 }
@@ -95,7 +115,7 @@ char label_buffer[LABEL_BUFFER_SIZE];
 void show_label_with_scale() {
 	snprintf(label_buffer, LABEL_BUFFER_SIZE, "Scale: %.1lfx",
 			active_context->scale);
-	show_label(label_buffer);
+	control_label_set(label_buffer);
 }
 
 int reset_coord(int screen_side, int frame_side,
@@ -114,7 +134,7 @@ void reset_position() {
 
 void reset_position_handler() {
 	reset_position();
-	show_label("Position reset");
+	control_label_set("Position reset");
 }
 
 void move_up_handler() {
@@ -138,16 +158,16 @@ void toggle_window_tracking_handler() {
 	
 	snprintf(label_buffer, LABEL_BUFFER_SIZE, "Window tracking: %s",
 			window_tracking_enabled ? "On" : "Off");
-	show_label(label_buffer);
+	control_label_set(label_buffer);
 }
 
 void adjust_window_size_handler() {
-	window_resize(active_context->window,
+	screen_window_resize(active_context->window,
 			active_context->frame_width, active_context->frame_height);
-	activate_window_context(active_context->window);
+	control_context_select(active_context->window);
 	reset_position();
 	
-	show_label("Window adjusted");
+	control_label_set("Window adjusted");
 }
 
 void reset_scale() {
@@ -202,5 +222,5 @@ void toggle_cursor_capturing_handler() {
 	
 	snprintf(label_buffer, LABEL_BUFFER_SIZE, "Cursor capturing: %s",
 			cursor_capturing_enabled ? "On" : "Off");
-	show_label(label_buffer);
+	control_label_set(label_buffer);
 }

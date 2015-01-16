@@ -20,8 +20,20 @@ long long stages_start[STAGES_COUNT],
 double stages_sum[STAGES_COUNT];
 int stages_calls[STAGES_COUNT];
 
-long long traffic_diffs = 0;
-long long traffic_uncompressed = 0;
+long long traffic_compressed, traffic_uncompressed;
+
+void profiler_traffic_init() {
+	traffic_compressed = 0;
+	traffic_uncompressed = 0;
+}
+
+void profiler_traffic_count_compressed(int value) {
+	traffic_compressed += value;
+}
+
+void profiler_traffic_count_uncompressed(int value) {
+	traffic_uncompressed += value;
+}
 
 void profiler_start(int stage) {
 	stages_start[stage] = get_time_nsec();
@@ -48,7 +60,8 @@ ExcCode profiler_save(const char *filename) {
 	#undef FINALLY
 	#define FINALLY fclose(f);
 	
-	double speed = ((double) traffic_diffs * BITS_PER_BYTE / BITS_PER_MBIT) /
+	double speed = ((double) traffic_compressed *
+				BITS_PER_BYTE / BITS_PER_MBIT) /
 				(stages_sum[STAGE_TRANSFER] / NSECS_PER_SEC);
 	if (fprintf(f,
 		"Diffs Traffic:\n"
@@ -57,9 +70,9 @@ ExcCode profiler_save(const char *filename) {
 		"    Uncompressed: %.1lf MiB\n"
 		"    Rate: %.1lf%%\n",
 		speed,
-		(double) traffic_diffs / BYTES_PER_MIB,
+		(double) traffic_compressed / BYTES_PER_MIB,
 		(double) traffic_uncompressed / BYTES_PER_MIB,
-		(double) traffic_diffs / traffic_uncompressed * 100.0
+		(double) traffic_compressed / traffic_uncompressed * 100.0
 	) < 0)
 		THROW(ERR_FILE_WRITE, filename);
 	

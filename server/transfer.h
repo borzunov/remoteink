@@ -2,15 +2,12 @@
 #define TRANSFER_H
 
 
-#define TRANSFER_BUFFER_SIZE 4 * 1024 * 1024
-extern char buffer[TRANSFER_BUFFER_SIZE];
+extern ExcCode transfer_recv_string(int conn_fd, const char **res);
 
-extern ExcCode string_read(int conn_fd, const char **res);
-
-extern ExcCode image_send_all(
+extern ExcCode transfer_image_send_all(
 	int conn_fd, const unsigned *image, unsigned width, unsigned height
 );
-extern ExcCode image_send_diff(
+extern ExcCode transfer_image_send_diff(
 	int conn_fd, const unsigned *prev_image, const unsigned *next_image,
 	unsigned client_width, unsigned client_height,
 	unsigned region_left, unsigned region_top,

@@ -10,14 +10,14 @@
  * 
  * Protocol:
  *   1. Client sends length of HEADER string (2-byte unsigned integer),
- *      then it's content.
+ *      then its content.
  *   2. Client sends length of password (2-byte unsigned integer),
- *      then it's content.
+ *      then its content.
  *   3. Server sends one byte that contains character PASSWORD_CORRECT if
  *      password is correct and PASSWORD_WRONG otherwise.
  *   4. Client sends width and height (two 2-byte unsigned integers).
  *   5. Server sends sequence of commands described below. First byte of each
- *      command is a character describes it's type. The following bytes are
+ *      command is a character describes its type. The following bytes are
  *      command arguments if they exist:
  *        - Coordinates are 2-byte unsigned integers
  *        - Color is 3-byte integer interpreted as RGB

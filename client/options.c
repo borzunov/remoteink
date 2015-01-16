@@ -72,6 +72,22 @@ ExcCode save_password(const char *key, char *buffer, int buffer_size) {
 }
 
 
+int agreement_accepted = 0;
+
+ExcCode load_agreement_accepted(const char *key, const char *value) {
+	TRY(parse_bool(key, value, &agreement_accepted));
+	return 0;
+}
+
+ExcCode save_agreement_accepted(
+		const char *key, char *buffer, int buffer_size) {
+	strncpy(buffer, agreement_accepted ? INI_VALUE_TRUE : INI_VALUE_FALSE,
+			buffer_size - 1);
+	buffer[buffer_size - 1] = 0;
+	return 0;
+}
+
+
 const struct IniSection sections[] = {
 	{"Server", (struct IniParam []) {
 		{"Host", load_server_host, save_server_host, 0},
@@ -86,7 +102,10 @@ const struct IniSection sections[] = {
 		{"Orientation", load_orientation, save_orientation, 0},
 		{NULL}
 	}},
-	
+	{"Agreement", (struct IniParam []) {
+		{"Accepted", load_agreement_accepted, save_agreement_accepted, 0},
+		{NULL}
+	}},
 	{NULL}
 };
 

@@ -183,6 +183,23 @@ void add_field(const char *label_caption, const char *text,
 	label_y += font_label->height + LINE_SPACING + PARAGRAPH_EXTRA_SPACING;
 }
 
+#define AGREEMENT_CONTENT \
+		"This program is experimental. Reader's screen isn't intended " \
+		"to update so frequently, so using the program can lead " \
+		"to malfunction of the screen or reduce its lifetime. Developers " \
+		"of the program aren't responsible for possible damage to your " \
+		"device."
+
+void agreement_accept_handler(int button) {
+	if (button != 1) {
+		show_error("You can't use program without accepting the agreement");
+		CloseApp();
+		return;
+	}
+	agreement_accepted = 1;
+	save_config(config_filename);
+}
+
 pthread_t client_thread;
 
 void *start_client_connect(void *arg) {
@@ -266,6 +283,10 @@ void show_intro() {
 		buttons_tab_order[buttons_tab_cur]->focused = 1;
 	
 	ui_repaint(controls, controls_top);
+	
+	if (!agreement_accepted)
+		Dialog(ICON_WARNING, "Warning", AGREEMENT_CONTENT,
+				"Accept", "Reject", agreement_accept_handler);
 }
 
 void show_error(const char *error) {

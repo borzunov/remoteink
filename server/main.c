@@ -335,7 +335,7 @@ ExcCode client_handshake(int *client_width, int *client_height) {
 		
 	TRY(transfer_recv_string(conn_fd, &line));
 	int is_correct;
-	TRY(check_password(line, &is_correct));	
+	TRY(check_password(line, &is_correct));
 	transfer_buffer[0] = is_correct ? PASSWORD_CORRECT : PASSWORD_WRONG;
 	if (write(conn_fd, transfer_buffer, 1) < 0)
 		THROW(ERR_SOCK_WRITE);

@@ -39,26 +39,26 @@
 #define HEADER "InkMonitor v0.01"
 
 #define PASSWORD_CORRECT '+'
-#define PASSWORD_WRONG '-'
+#define PASSWORD_WRONG   '-'
 
-#define CMD_RESET_POSITION	  'X' // RESET_POSITION(x, y)
-#define CMD_SKIP			  'N' // SKIP(count)
-#define CMD_PUT_REPEAT		  'R' // PUT_REPEAT(count)
-#define CMD_PUT_COLOR		  'T' // PUT_COLOR(color)
+#define CMD_RESET_POSITION    'X' // RESET_POSITION(x, y)
+#define CMD_SKIP              'N' // SKIP(count)
+#define CMD_PUT_REPEAT        'R' // PUT_REPEAT(count)
+#define CMD_PUT_COLOR         'T' // PUT_COLOR(color)
 
 #ifdef CMD_EXTENTED
-#define CMD_SET_COLOR		  'C' // SET_COLOR(color)
-#define CMD_DRAW_PIXEL		  'O' // DRAW_PIXEL(x, y)
-#define CMD_DRAW_LINE		  'L' // DRAW_LINE(x1, y1, x2, y2)
-#define CMD_FILL_AREA		  'A' // FILL_AREA(x, y, w, h)
+#define CMD_SET_COLOR         'C' // SET_COLOR(color)
+#define CMD_DRAW_PIXEL        'O' // DRAW_PIXEL(x, y)
+#define CMD_DRAW_LINE         'L' // DRAW_LINE(x1, y1, x2, y2)
+#define CMD_FILL_AREA         'A' // FILL_AREA(x, y, w, h)
 
-#define CMD_FULL_UPDATE	      'F' // FULL_UPDATE()
+#define CMD_FULL_UPDATE       'F' // FULL_UPDATE()
 #endif
-#define CMD_SOFT_UPDATE	      'S' // SOFT_UPDATE()
-#define CMD_PARTIAL_UPDATE	  'P' // PARTIAL_UPDATE(x, y, w, h)
+#define CMD_SOFT_UPDATE       'S' // SOFT_UPDATE()
+#define CMD_PARTIAL_UPDATE    'P' // PARTIAL_UPDATE(x, y, w, h)
 #ifdef CMD_EXTENTED
 #define CMD_PARTIAL_UPDATE_BW 'p' // PARTIAL_UPDATE_BW(x, y, w, h)
-#define CMD_DYNAMIC_UPDATE	  'D' // DYNAMIC_UPDATE(x, y, w, h)
+#define CMD_DYNAMIC_UPDATE    'D' // DYNAMIC_UPDATE(x, y, w, h)
 #define CMD_DYNAMIC_UPDATE_BW 'd' // DYNAMIC_UPDATE_BW(x, y, w, h)
 #endif
 

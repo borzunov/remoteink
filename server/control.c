@@ -182,7 +182,7 @@ void reset_scale_handler() {
 	show_label_with_scale();
 }
 
-void center_zoomed_position(double new_scale) {	
+void center_zoomed_position(double new_scale) {
 	int prev_width = round(client_width / active_context->scale);
 	int prev_height = round(client_height / active_context->scale);
 	int cur_width = round(client_width / new_scale);

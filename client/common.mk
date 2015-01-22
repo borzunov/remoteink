@@ -59,7 +59,7 @@ endif
 
 CDEPS = -MT$@ -MF$(addsuffix .d, $(basename $@)) -MMD -MP
 
-OBJS		= $(addprefix $(OBJDIR)/, $(addsuffix .o, $(notdir $(SOURCES))))
+OBJS        = $(addprefix $(OBJDIR)/, $(addsuffix .o, $(notdir $(SOURCES))))
 BITMAP_OBJS = $(addsuffix .c.o, $(addprefix $(OBJDIR)/, $(notdir $(BITMAPS))))
 
 # don't delete the intermediate files after make success

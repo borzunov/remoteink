@@ -18,12 +18,12 @@ long long get_time_nsec();
  * At this time, the server executes the following functions:
  *   1).   screenshot_get()  in "server/screen.c"   (STAGE_SHOT)
  *   2).   image_send_diff() in "server/transfer.c" (STAGE_DIFF)
- *   3).   send_buffer()	 in "server/transfer.c" (STAGE_TRANSFER)
- *   4-5). wait_confirm()	 in "server/transfer.c" (STAGE_DRAW)
+ *   3).   send_buffer()     in "server/transfer.c" (STAGE_TRANSFER)
+ *   4-5). wait_confirm()    in "server/transfer.c" (STAGE_DRAW)
  *
  * The client executes the following functions:
  *   1-3). client_mainloop() in "client/client.c"
- *   4-5). client_exec()	 in "client/client.c"
+ *   4-5). client_exec()     in "client/client.c"
  * 
  * Profiler helps to measure time of each stage and find perfomance problems.
  */

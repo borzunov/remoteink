@@ -9,6 +9,7 @@
 #include "shortcuts.h"
 #include "transfer.h"
 
+#include <arpa/inet.h>
 #include <crypt.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -19,7 +20,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
+#include <syslog.h>
 #include <unistd.h>
 
 
@@ -27,12 +30,6 @@
 
 const char *config_filename = "/etc/" DAEMON_NAME "/config.ini";
 const char *lock_filename = "/var/run/" DAEMON_NAME ".pid";
-
-
-void show_error(const char *error) {
-	fprintf(stderr, "[-] Error: %s\n", error);
-	exit(EXIT_FAILURE);
-}
 
 
 void show_version() {
@@ -51,7 +48,6 @@ void show_help() {
 		"    --version     Output version info and exit.\n"
 	);
 }
-
 
 #define ERR_ARG_EXCESS "Excess argument is present (see --help)"
 #define ERR_ACTION_UNSPECIFIED "You need to specify action (see --help)"
@@ -240,7 +236,7 @@ ExcCode send_next_frame(unsigned **image_data,
 		int region_width, int region_height) {
 	// Check whether connection is dead. If so, SIGPIPE will be sent.
 	if (write(conn_fd, &conn_check_char, sizeof (char)) < 0)
-		THROW(ERR_SOCK_WRITE);
+		THROW(ERR_SOCK_TRANSFER);
 	
 	pthread_mutex_lock(&control_lock);
 	#undef FINALLY
@@ -319,12 +315,12 @@ ExcCode client_handshake(int *client_width, int *client_height) {
 	TRY(check_password(line, &is_correct));
 	transfer_buffer[0] = is_correct ? PASSWORD_CORRECT : PASSWORD_WRONG;
 	if (write(conn_fd, transfer_buffer, 1) < 0)
-		THROW(ERR_SOCK_WRITE);
+		THROW(ERR_SOCK_TRANSFER);
 	if (!is_correct)
 		THROW(ERR_WRONG_PASSWORD);
 		
 	if (read(conn_fd, transfer_buffer, COORD_SIZE * 2) != COORD_SIZE * 2)
-		THROW(ERR_SOCK_READ);
+		THROW(ERR_SOCK_TRANSFER);
 	int i = -1;
 	READ_COORD(*client_width, transfer_buffer, i);
 	READ_COORD(*client_height, transfer_buffer, i);
@@ -347,8 +343,10 @@ ExcCode screen_of_display(xcb_connection_t *c, int screen,
 
 void *handle_shortcuts(void *arg) {
 	if (shortcuts_handle_start(shortcuts)) {
-		//show_error(exc_message, 0); // LOG:
-		// FIXME: exit here
+		syslog(LOG_CRIT, "%s", exc_message);
+		
+		state = STATE_SHUTDOWN;
+		close(serv_fd);
 	}
 	return NULL;
 }
@@ -372,7 +370,8 @@ ExcCode server_create() {
 	TRY(shortcuts_init(display, screen, root));
 	
 	TRY(options_config_load(config_filename));
-	/*printf("    Monitor resolution: %dx%d\n", screen_width, screen_height);*/ // LOG:
+	syslog(LOG_DEBUG,
+			"Monitor resolution: %dx%d", screen_width, screen_height);
 	
 	Imlib_Font label_font = imlib_load_font(label_font_name);
 	if (label_font == NULL)
@@ -404,11 +403,12 @@ void server_destroy() {
 	pthread_mutex_destroy(&control_lock);
 	
 	close(serv_fd);
-	
-	/*if (has_stats && stats_enabled && !profiler_save(stats_filename))
-		printf("[*] Stats saved to \"%s\"\n", stats_filename);*/
-	if (has_stats && stats_enabled)
-		profiler_save(stats_filename); // LOG:
+	if (has_stats && stats_enabled) {
+		if (profiler_save(stats_filename))
+			syslog(LOG_ERR, "%s", exc_message);
+		else
+			syslog(LOG_DEBUG, "Stats saved to \"%s\"", stats_filename);
+	}
 }
 
 ExcCode server_setup() {
@@ -424,33 +424,29 @@ ExcCode server_setup() {
 	
 	int optval = 1;
 	size_t optlen = sizeof(int);
-	setsockopt(serv_fd, SOL_SOCKET, SO_REUSEADDR, &optval, optlen);
-	
-	if (bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) < 0)
+	if (setsockopt(serv_fd, SOL_SOCKET, SO_REUSEADDR, &optval, optlen))
+		THROW(ERR_SOCK_CONFIG);
+	if (bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)))
 		THROW(ERR_SOCK_BIND, server_host, server_port);
-
-	listen(serv_fd, 0);
+	if (listen(serv_fd, 0))
+		THROW(ERR_SOCK_LISTEN, server_host, server_port);
 	return 0;
 }
 
-ExcCode server_handle_client() {
-	struct sockaddr_in client_addr;
-	socklen_t client_len = sizeof (struct sockaddr_in);
-	conn_fd = accept(serv_fd, (struct sockaddr *) &client_addr, &client_len);
-	if (conn_fd < 0)
-		THROW(ERR_SOCK_ACCEPT);
-	state = STATE_HANDLE_CLIENT;
+#define CLIENT_ADDR_BUFFER_SIZE 256
+char client_addr_buffer[CLIENT_ADDR_BUFFER_SIZE];
+
+ExcCode server_handle_client(const struct sockaddr_in *client_addr) {
 	#undef FINALLY
-	#define FINALLY {\
-		close(conn_fd);\
-		state = STATE_LISTEN;\
-	}
+	#define FINALLY close(conn_fd);
 	
-	//printf("[+] Accepted client connection\n"); // LOG: with IP
+	syslog(LOG_INFO, "Accepted client connection from %s",
+			inet_ntoa(client_addr->sin_addr));
 	int client_width, client_height;
 	TRY(client_handshake(&client_width, &client_height));
 	control_client_dimensions_set(client_width, client_height);
-	//printf("    Reader resolution: %ux%u\n", client_width, client_height); // LOG:
+	syslog(LOG_DEBUG,
+			"Reader resolution: %dx%d", client_width, client_height);
 	
 	control_label_set("Connected");
 	
@@ -469,11 +465,12 @@ ExcCode server_handle_client() {
 		long long sleep_time = NSECS_PER_SEC / max_fps - frame_duration;
 		if (sleep_time > 0)
 			usleep(sleep_time / NSECS_PER_MSEC);
-		/*else
+		else
 		if (stats_enabled && sleep_time < 0)
-			printf("[~] Too slow! Frame duration is %lld ms.\n",
-					frame_duration / NSECS_PER_MSEC);*/ // LOG:
+			syslog(LOG_DEBUG, "Too slow! Frame duration is %lld ms.",
+					frame_duration / NSECS_PER_MSEC);
 	}
+	syslog(LOG_INFO, "Client disconnected");
 	
 	FINALLY;
 	#undef FINALLY
@@ -481,6 +478,106 @@ ExcCode server_handle_client() {
 	return 0;
 }
 
+
+void fatal_handler(int code) {
+	syslog(LOG_NOTICE, "Caught signal %s", strsignal(code));
+	
+	state = STATE_SHUTDOWN;
+	close(serv_fd);
+	
+	exit(EXIT_SUCCESS);
+}
+
+void term_handler(int code) {
+	syslog(LOG_INFO, "Server shutted down");
+	
+	state = STATE_SHUTDOWN;
+	close(serv_fd);
+	
+	exit(EXIT_SUCCESS);
+}
+
+void kick_handler(int code) {
+	if (state == STATE_HANDLE_CLIENT) {
+		syslog(LOG_ERR, "Client has kicked");
+		
+		state = STATE_LISTEN;
+		close(conn_fd);
+	}
+}
+
+void broken_pipe_handler(int code) {
+	if (state == STATE_HANDLE_CLIENT) {
+		syslog(LOG_ERR, ERR_SOCK_TRANSFER);
+	
+		state = STATE_LISTEN;
+		close(conn_fd);
+	}
+}
+
+const int signals_ignored[] = {
+	SIGALRM, SIGTSTP, SIGTTIN, SIGTTOU, SIGURG, SIGXCPU, SIGXFSZ, SIGVTALRM,
+	SIGPROF, SIGIO, SIGUSR1, SIGUSR2, SIGHUP, 0
+};
+
+const int signals_fatal[] = {
+	SIGQUIT, SIGILL, SIGTRAP, SIGABRT, SIGIOT, SIGBUS, SIGFPE, SIGSEGV,
+	SIGSTKFLT, SIGPWR, SIGSYS, SIGCONT, 0
+};
+
+ExcCode configure_signal_handlers() {
+	struct sigaction action;
+	sigemptyset(&action.sa_mask);
+	action.sa_flags = 0;
+	
+	action.sa_handler = SIG_IGN;
+	for (int i = 0; signals_ignored[i]; i++)
+		if (sigaction(signals_ignored[i], &action, NULL))
+			THROW(ERR_SIGNAL_CONFIGURE);
+	
+	action.sa_handler = fatal_handler;
+	for (int i = 0; signals_fatal[i]; i++)
+		if (sigaction(signals_fatal[i], &action, NULL))
+			THROW(ERR_SIGNAL_CONFIGURE);
+	
+	action.sa_handler = term_handler;
+	sigaction(SIGTERM, &action, NULL);
+	
+	action.sa_handler = kick_handler;
+	sigaction(SIGINT, &action, NULL);
+	
+	action.sa_handler = broken_pipe_handler;
+	sigaction(SIGPIPE, &action, NULL);
+	return 0;
+}
+
+ExcCode daemon_main() {
+	TRY(server_create());
+	
+	#undef FINALLY
+	#define FINALLY server_destroy();
+	
+	TRY(server_setup());
+	syslog(LOG_INFO, "Listen on %s:%d", server_host, server_port);
+	while (state == STATE_LISTEN || state == STATE_HANDLE_CLIENT) {		
+		struct sockaddr_in client_addr;
+		socklen_t client_len = sizeof (struct sockaddr_in);
+		conn_fd = accept(serv_fd, (struct sockaddr *) &client_addr,
+				&client_len);
+		if (conn_fd < 0)
+			THROW(ERR_SOCK_ACCEPT);	
+		state = STATE_HANDLE_CLIENT;
+		if (server_handle_client(&client_addr) && state > STATE_LISTEN) {
+			state = STATE_LISTEN;
+			syslog(LOG_ERR, "%s", exc_message);
+		}
+	}
+	
+	FINALLY;
+	#undef FINALLY
+	#define FINALLY
+	return 0;
+}
 
 #define ERR_LOCK_FILE_CONTENT "Lock file \"%s\" doesn't contain PID"
 #define ERR_LOCK_ALREADY_RUNNING \
@@ -495,10 +592,10 @@ ExcCode server_handle_client() {
 #define PID_BUFFER_SIZE 256
 char pid_buffer[PID_BUFFER_SIZE];
 
-ExcCode daemon_init(int *lock_fd) {
+ExcCode run_daemon() {
 	// Try to grab the lock file
-	*lock_fd = open(lock_filename, O_RDWR | O_CREAT | O_EXCL, 0644);
-	if (*lock_fd == -1) {
+	int lock_fd = open(lock_filename, O_RDWR | O_CREAT | O_EXCL, 0644);
+	if (lock_fd == -1) {
 		FILE *lock_file = fopen(lock_filename, "r");
 		if (lock_file == NULL)
 			THROW(ERR_FILE_CREATE, lock_filename);		
@@ -520,12 +617,16 @@ ExcCode daemon_init(int *lock_fd) {
 		} else {
 			THROW(ERR_LOCK_ACQUIRE, lock_filename);
 		}
-	}		
+	}
+	
 	#undef FINALLY
-	#define FINALLY close(*lock_fd);
+	#define FINALLY {\
+		close(lock_fd);\
+		unlink(lock_filename);\
+	}
 	
 	// Set a lock on the lock file
-	if (lockf(*lock_fd, F_TLOCK, 0) < 0)
+	if (lockf(lock_fd, F_TLOCK, 0) < 0)
 		THROW(ERR_LOCK_ACQUIRE, lock_filename);
 		
 	// Set our current working directory to root to avoid tying up
@@ -549,76 +650,46 @@ ExcCode daemon_init(int *lock_fd) {
 	// Make the process a session and process group leader
 	if (setsid() < 0)
 		THROW(ERR_DAEMON_START);
+		
+	// Restrict file creation mode to 640 for security purposes
+	umask(0137);
+	
+	configure_signal_handlers();
 	
 	// Save PID
-	snprintf(pid_buffer, PID_BUFFER_SIZE, "%d\n", getpid());
-	if (write(*lock_fd, pid_buffer, strlen(pid_buffer)) < 0)
+	int pid = getpid();
+	snprintf(pid_buffer, PID_BUFFER_SIZE, "%d\n", pid);
+	if (write(lock_fd, pid_buffer, strlen(pid_buffer)) < 0)
 		THROW(ERR_FILE_WRITE, lock_filename);
 		
-	// We don't need to execute FINALLY because
-	// we still need lock file descriptor
-	#undef FINALLY
-	#define FINALLY
-	
-	printf("[+] " DAEMON_NAME " started (PID %d)\n", getpid());
+	printf("[+] " DAEMON_NAME " started (PID %d)\n", pid);
 	
 	// Close unnecessary resources
 	for (int i = getdtablesize(); i >= 0; i--)
-		if (i != *lock_fd)
+		if (i != lock_fd)
 			close(i);
 
 	// Restore standard IO file descriptors
 	int stdio_fd = open("/dev/null", O_RDWR);
 	dup(stdio_fd);
 	dup(stdio_fd);
-
-	// Restrict file creation mode to 640 for security purposes
-	umask(0137);
 	
-	return 0;
-}
-
-ExcCode daemon_main() {
-	TRY(server_create());
+	openlog(DAEMON_NAME, LOG_CONS, LOG_LOCAL0);
 	
-	#undef FINALLY
-	#define FINALLY {\
-		server_destroy();\
-		state = STATE_SHUTDOWN;\
+	if (daemon_main() && state > STATE_SHUTDOWN) {
+		state = STATE_SHUTDOWN;
+		syslog(LOG_CRIT, "%s", exc_message);
+		
+		closelog();
+		FINALLY;
+		exit(EXIT_FAILURE);
 	}
 	
-	TRY(server_setup());
-	//printf("[+] Listen on %s:%d\n", server_host, server_port); // LOG:
-	while (state == STATE_LISTEN || state == STATE_HANDLE_CLIENT)
-		if (server_handle_client()) {
-			//show_error(exc_message, 0); // LOG:
-		}
-	
+	closelog();
 	FINALLY;
 	#undef FINALLY
 	#define FINALLY
 	return 0;
-}
-
-void sigint_handler(int code) {
-	if (state == STATE_HANDLE_CLIENT)
-		state = STATE_LISTEN;
-	else
-	if (state == STATE_LISTEN)
-		state = STATE_SHUTDOWN;
-}
-
-#define ERR_SIGPIPE "Connection closed"
-
-void sigpipe_handler(int code) {
-	if (state == STATE_HANDLE_CLIENT) {
-		state = STATE_LISTEN;
-		//show_error(ERR_SIGPIPE, 0); // LOG:
-	} else
-	if (state == STATE_LISTEN) {
-		state = STATE_SHUTDOWN;
-		//show_error(ERR_SIGPIPE, 1); // LOG:
-	}
 }
 
 ExcCode perform_action(int argc, char *argv[]) {
@@ -627,23 +698,16 @@ ExcCode perform_action(int argc, char *argv[]) {
 	TRY(parse_arguments(argc, argv));
 	
 	if (!strcmp(action, "start")) {
-		int lock_fd; //
-		TRY(daemon_init(&lock_fd));
-		
-		signal(SIGINT, sigint_handler); // FIXME: May be kick possibility via SIGINT? "inkmonitord kick"?
-		signal(SIGPIPE, sigpipe_handler);
-		
-		if (daemon_main()) {
-			//show_error(exc_message, 1); // LOG:
-			exit(EXIT_FAILURE);
-		}
-		exit(EXIT_SUCCESS); // FIXME: maybe some signals need to terminate daemon and return failure?
-	} else 
+		TRY(run_daemon());
+		return 0;
+	} else
 		THROW(ERR_ACTION_UNKNOWN, action);
 }
 
 int main(int argc, char *argv[]) {
-	if (perform_action(argc, argv))
-		show_error(exc_message);
-	return 0;
+	if (perform_action(argc, argv)) {
+		fprintf(stderr, "[-] Error: %s\n", exc_message);
+		return EXIT_FAILURE;
+	}
+	return EXIT_SUCCESS;
 }

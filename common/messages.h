@@ -14,12 +14,12 @@
 
 #define ERR_SOCK_CREATE "Failed to create socket"
 #define ERR_SOCK_RESOLVE "No such host: %s"
+#define ERR_SOCK_CONFIG "Failed to configure socket"
 #define ERR_SOCK_BIND "Failed to bind %s:%d"
+#define ERR_SOCK_LISTEN "Failed to listen %s:%d"
 #define ERR_SOCK_ACCEPT "Failed to accept a connection"
 #define ERR_SOCK_CONNECT "Failed to connect to %s:%d"
-#define ERR_SOCK_READ "Failed to receive data from socket"
-#define ERR_SOCK_WRITE "Failed to send data to socket"
-#define ERR_SOCK_CLOSE "Failed to close socket"
+#define ERR_SOCK_TRANSFER "Connection closed"
 
 #define ERR_PROTOCOL "Protocol mismatch"
 
@@ -38,6 +38,8 @@
 
 #define ERR_X_CONNECT "Failed to connect to X server"
 #define ERR_X_REQUEST "Error on request to X server"
+
+#define ERR_SIGNAL_CONFIGURE "Failed to configure signal handler"
 
 #define ERR_WRONG_PASSWORD "Wrong password"
 

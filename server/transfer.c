@@ -13,12 +13,12 @@ char buffer[MAX_SENT_DATA_SIZE];
 
 ExcCode transfer_recv_string(int conn_fd, const char **res) {
 	if (read(conn_fd, buffer, LENGTH_SIZE) != LENGTH_SIZE)
-		THROW(ERR_SOCK_READ);
+		THROW(ERR_SOCK_TRANSFER);
 	int i = -1;
 	int len;
 	READ_LENGTH(len, buffer, i);
 	if (read(conn_fd, buffer, len) != len)
-		THROW(ERR_SOCK_READ);
+		THROW(ERR_SOCK_TRANSFER);
 	*res = buffer;
 	buffer[len] = 0;
 	return 0;
@@ -28,7 +28,7 @@ ExcCode send_buffer(int conn_fd, const char *buffer, int len) {
 	profiler_start(STAGE_TRANSFER);
 	
 	if (write(conn_fd, buffer, len) < 0)
-		THROW(ERR_SOCK_WRITE);
+		THROW(ERR_SOCK_TRANSFER);
 		
 	profiler_finish(STAGE_TRANSFER);
 	return 0;
@@ -38,7 +38,7 @@ ExcCode wait_confirm(int conn_fd) {
 	profiler_start(STAGE_DRAW);
 	
 	if (read(conn_fd, buffer, 1) != 1 || buffer[0] != RES_CONFIRM)
-		THROW(ERR_SOCK_READ);
+		THROW(ERR_SOCK_TRANSFER);
 	
 	profiler_finish(STAGE_DRAW);
 	return 0;

@@ -20,7 +20,7 @@ int client_process;
 ExcCode client_send_confirm() {
 	buffer[0] = RES_CONFIRM;
 	if (write(conn_fd, buffer, 1) < 0 && client_process)
-		THROW(ERR_SOCK_WRITE);
+		THROW(ERR_SOCK_TRANSFER);
 	return 0;
 }
 
@@ -214,7 +214,7 @@ ExcCode client_mainloop(int client_width, int client_height) {
 		if (!client_process || !read_size)
 			break;
 		if (read_size < 0)
-			THROW(ERR_SOCK_READ);
+			THROW(ERR_SOCK_TRANSFER);
 		
 		int executed_size;
 		TRY(client_exec(buffer, prefix_size + read_size, &executed_size,
@@ -242,7 +242,7 @@ ExcCode client_string_send(const char *str) {
 	memcpy(buffer + i, str, len);
 	i += len;
 	if (write(conn_fd, buffer, i) < 0)
-		THROW(ERR_SOCK_WRITE);
+		THROW(ERR_SOCK_TRANSFER);
 	return 0;
 }
 
@@ -251,7 +251,7 @@ ExcCode client_handshake(int client_width, int client_height) {
 	
 	TRY(client_string_send(password));
 	if (read(conn_fd, buffer, 1) != 1)
-		THROW(ERR_SOCK_READ);
+		THROW(ERR_SOCK_TRANSFER);
 	if (buffer[0] == PASSWORD_WRONG) {
 		THROW(ERR_WRONG_PASSWORD);
 	} else
@@ -262,7 +262,7 @@ ExcCode client_handshake(int client_width, int client_height) {
 	WRITE_COORD(client_width, buffer, i);
 	WRITE_COORD(client_height, buffer, i);
 	if (write(conn_fd, buffer, i) < 0)
-		THROW(ERR_SOCK_WRITE);
+		THROW(ERR_SOCK_TRANSFER);
 	return 0;
 }
 
@@ -293,7 +293,6 @@ ExcCode client_connect(int client_width, int client_height) {
 	
 	TRY(client_mainloop(client_width, client_height));
 	
-	if (close(conn_fd) < 0)
-		THROW(ERR_SOCK_CLOSE);
+	close(conn_fd);
 	return 0;
 }

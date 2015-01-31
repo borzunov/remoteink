@@ -4,7 +4,7 @@
 #include "screen.h"
 #include "shortcuts.h"
 
-#include <stdio.h>
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <X11/Xutil.h>
@@ -27,6 +27,10 @@ ExcCode shortcuts_init(xcb_connection_t *cur_display,
 	if (key_symbols_table == NULL)
 		THROW(ERR_X_REQUEST);
 	return 0;
+}
+
+void shortcuts_free() {
+	xcb_key_symbols_free(key_symbols_table);
 }
 
 
@@ -111,12 +115,15 @@ ExcCode grab_hotkey(const struct Hotkey *hotkey) {
 }
 
 
+volatile sig_atomic_t process;
+
 ExcCode shortcuts_handle_start(const struct Shortcut shortcuts[]) {
 	for (int i = 0; shortcuts[i].handler != NULL; i++)
 		TRY(grab_hotkey(&shortcuts[i].hotkey));
 	
+	process = 1;
 	xcb_generic_event_t *event;
-	while ((event = xcb_wait_for_event(display)) != NULL) {
+	while (process && (event = xcb_wait_for_event(display)) != NULL) {
 		pthread_mutex_lock(&control_lock);
 		
 		do {
@@ -144,5 +151,9 @@ ExcCode shortcuts_handle_start(const struct Shortcut shortcuts[]) {
 		
 		pthread_mutex_unlock(&control_lock);
 	}
-	THROW(ERR_X_REQUEST);
+	return 0;
+}
+
+void shortcuts_handle_stop() {
+	process = 0;
 }

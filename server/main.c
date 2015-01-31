@@ -10,6 +10,8 @@
 #include "transfer.h"
 
 #include <crypt.h>
+#include <fcntl.h>
+#include <errno.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -17,49 +19,45 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 
-void show_error(const char *error, int is_fatal) {
-	if (is_fatal) {
-		fprintf(stderr, "[-] Fatal Error: %s\n", error);
-		exit(EXIT_FAILURE);
-	} else
-		fprintf(stderr, "[-] Error: %s\n", error);
+#define DAEMON_NAME "inkmonitord"
+
+const char *config_filename = "/etc/" DAEMON_NAME "/config.ini";
+const char *lock_filename = "/var/run/" DAEMON_NAME ".pid";
+
+
+void show_error(const char *error) {
+	fprintf(stderr, "[-] Error: %s\n", error);
+	exit(EXIT_FAILURE);
 }
-
-
-#define CONFIG_FILENAME_SIZE 256
-char config_filename[CONFIG_FILENAME_SIZE];
 
 
 void show_version() {
-	printf(
-		"Server for tool for using E-Ink reader as computer monitor\n"
-		"Copyright (c) 2013-2015 Alexander Borzunov\n"
-	);
+	printf("Copyright (c) 2013-2015 Alexander Borzunov\n");
 }
 
 void show_help() {
-	show_version();
 	printf(
+		"Server for tool for using E-Ink reader as computer monitor\n"
 		"\n"
 		"Usage:\n"
-		"    inkmonitor-server [OPTION] [CONFIG]\n"
+		"    inkmonitor-server [start|stop]\n"
 		"\n"
 		"Standard options:\n"
 		"    -h, --help    Display this help and exit.\n"
 		"    --version     Output version info and exit.\n"
-		"\n"
-		"Parameters:\n"
-		"    CONFIG        INI configuration file.\n"
-		"                  Default: %s\n",
-		config_filename
 	);
 }
 
 
-#define ERR_ARG_EXCESS "Excess argument is present"
+#define ERR_ARG_EXCESS "Excess argument is present (see --help)"
+#define ERR_ACTION_UNSPECIFIED "You need to specify action (see --help)"
+#define ERR_ACTION_UNKNOWN "Unknown action \"%s\" (see --help)"
+
+const char *action = NULL;
 
 ExcCode parse_arguments(int argc, char *argv[]) {
 	int pos = 0;
@@ -74,36 +72,16 @@ ExcCode parse_arguments(int argc, char *argv[]) {
 			exit(EXIT_SUCCESS);
 		}
 		
-		if (pos == 0) {
-			strncpy(config_filename, argv[i], CONFIG_FILENAME_SIZE - 1);
-			config_filename[CONFIG_FILENAME_SIZE - 1] = '\0';
-		} else
+		if (pos == 0)
+			action = argv[i];
+		else
 			THROW(ERR_ARG_EXCESS);
 		pos++;
 	}
+	if (pos == 0)
+		THROW(ERR_ACTION_UNSPECIFIED);
 	return 0;
 }
-
-
-void *handle_shortcuts(void *arg) {
-	if (shortcuts_handle_start(shortcuts))
-		show_error(exc_message, 0);
-	return NULL;
-}
-
-
-void track_focused_window() {
-	if (control_context_get() != NULL)
-		control_update_frame();
-	
-	xcb_window_t window;
-	if (!window_tracking_enabled || screen_get_focused(&window))
-		screen_get_root(&window);
-	control_context_select(window);
-}
-
-
-int serv_fd, conn_fd;
 
 
 ExcCode return_cursor() {
@@ -206,6 +184,16 @@ ExcCode image_turn_to_data(Imlib_Image image, unsigned **res) {
 	return 0;
 }
 
+void track_focused_window() {
+	if (control_context_get() != NULL)
+		control_update_frame();
+	
+	xcb_window_t window;
+	if (!window_tracking_enabled || screen_get_focused(&window))
+		screen_get_root(&window);
+	control_context_select(window);
+}
+
 ExcCode get_screenshot_data(unsigned **image_data,
 		int client_width, int client_height) {
 	track_focused_window();
@@ -224,6 +212,8 @@ ExcCode get_screenshot_data(unsigned **image_data,
 	return 0;
 }
 
+
+int serv_fd, conn_fd;
 
 int has_stats = 0;
 
@@ -283,18 +273,9 @@ ExcCode send_next_frame(unsigned **image_data,
 }
 
 
-int handle_client_flag = 0;
+enum State {STATE_SHUTDOWN, STATE_LISTEN, STATE_HANDLE_CLIENT};
+volatile sig_atomic_t state = STATE_LISTEN;
 
-ExcCode client_accept() {
-	struct sockaddr_in client_addr;
-	socklen_t client_len = sizeof (struct sockaddr_in);
-	conn_fd = accept(serv_fd, (struct sockaddr *) &client_addr, &client_len);
-	if (conn_fd < 0)
-		THROW(ERR_SOCK_ACCEPT);
-		
-	handle_client_flag = 1;
-	return 0;
-}
 
 int are_strings_equal_stable(const char *a, const char *b) {
 	// Compare strings "a" and "b" in constant time to prevent timing attacks
@@ -350,42 +331,84 @@ ExcCode client_handshake(int *client_width, int *client_height) {
 	return 0;
 }
 
-ExcCode client_mainloop(int client_width, int client_height) {
-	control_label_set("Connected");
-	
-	unsigned *image_data;
-	TRY(send_first_frame(&image_data, client_width, client_height));
-	
-	unsigned region_width = client_width / width_divisor;
-	unsigned region_height = client_height / height_divisor;
-	while (handle_client_flag) {
-		long long frame_start_time = get_time_nsec();
-		
-		TRY(send_next_frame(&image_data, client_width, client_height,
-				region_width, region_height));
 
-		long long frame_duration = get_time_nsec() - frame_start_time;
-		long long sleep_time = NSECS_PER_SEC / max_fps - frame_duration;
-		if (sleep_time > 0)
-			usleep(sleep_time / NSECS_PER_MSEC);
-		else
-		if (stats_enabled && sleep_time < 0)
-			printf("[~] Too slow! Frame duration is %lld ms.\n",
-					frame_duration / NSECS_PER_MSEC);
+ExcCode screen_of_display(xcb_connection_t *c, int screen,
+		xcb_screen_t **res) {
+	xcb_screen_iterator_t iter = xcb_setup_roots_iterator(xcb_get_setup(c));
+	for (int i = 0; iter.rem; i++) {
+		if (i == screen) {
+			*res = iter.data;
+			return 0;
+		}
+		xcb_screen_next(&iter);
 	}
-	return 0;
+	THROW(ERR_X_REQUEST);
 }
 
-void client_disconnect() {
-	handle_client_flag = 0;
+void *handle_shortcuts(void *arg) {
+	if (shortcuts_handle_start(shortcuts)) {
+		//show_error(exc_message, 0); // LOG:
+		// FIXME: exit here
+	}
+	return NULL;
 }
 
+xcb_connection_t *display;
+pthread_t shortcuts_thread;
 
-ExcCode server_create() {
+ExcCode server_create() {	
+	int default_screen_no;
+	display = xcb_connect(NULL, &default_screen_no);
+	if (xcb_connection_has_error(display))
+		THROW(ERR_X_CONNECT);
+	xcb_screen_t *screen;
+	TRY(screen_of_display(display, default_screen_no, &screen));
+	int screen_width = screen->width_in_pixels;
+	int screen_height = screen->height_in_pixels;
+	xcb_window_t root = screen->root;
+	control_screen_dimensions_set(screen_width, screen_height);
+	
+	TRY(screen_init(display, screen, root));
+	TRY(shortcuts_init(display, screen, root));
+	
+	TRY(options_config_load(config_filename));
+	/*printf("    Monitor resolution: %dx%d\n", screen_width, screen_height);*/ // LOG:
+	
+	Imlib_Font label_font = imlib_load_font(label_font_name);
+	if (label_font == NULL)
+		THROW(ERR_FONT, label_font_name);
+	imlib_context_set_font(label_font);
+	
+	int shortcuts_res;
+	if (pthread_mutex_init(&control_lock, NULL))
+		THROW(ERR_MUTEX_INIT);
+	if (pthread_create(&shortcuts_thread, NULL,
+			handle_shortcuts, &shortcuts_res))
+		THROW(ERR_THREAD_CREATE);
+
 	serv_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (serv_fd < 0)
 		THROW(ERR_SOCK_CREATE);
 	return 0;
+}
+
+void server_destroy() {
+	xcb_disconnect(display);
+	
+	shortcuts_free();
+	
+	imlib_free_font();
+	
+	shortcuts_handle_stop();
+	pthread_join(shortcuts_thread, NULL);
+	pthread_mutex_destroy(&control_lock);
+	
+	close(serv_fd);
+	
+	/*if (has_stats && stats_enabled && !profiler_save(stats_filename))
+		printf("[*] Stats saved to \"%s\"\n", stats_filename);*/
+	if (has_stats && stats_enabled)
+		profiler_save(stats_filename); // LOG:
 }
 
 ExcCode server_setup() {
@@ -411,20 +434,46 @@ ExcCode server_setup() {
 }
 
 ExcCode server_handle_client() {
-	TRY(client_accept());
-	
+	struct sockaddr_in client_addr;
+	socklen_t client_len = sizeof (struct sockaddr_in);
+	conn_fd = accept(serv_fd, (struct sockaddr *) &client_addr, &client_len);
+	if (conn_fd < 0)
+		THROW(ERR_SOCK_ACCEPT);
+	state = STATE_HANDLE_CLIENT;
 	#undef FINALLY
 	#define FINALLY {\
 		close(conn_fd);\
-		handle_client_flag = 0;\
+		state = STATE_LISTEN;\
 	}
 	
-	printf("[+] Accepted client connection\n");
+	//printf("[+] Accepted client connection\n"); // LOG: with IP
 	int client_width, client_height;
 	TRY(client_handshake(&client_width, &client_height));
 	control_client_dimensions_set(client_width, client_height);
-	printf("    Reader resolution: %ux%u\n", client_width, client_height);
-	TRY(client_mainloop(client_width, client_height));
+	//printf("    Reader resolution: %ux%u\n", client_width, client_height); // LOG:
+	
+	control_label_set("Connected");
+	
+	unsigned *image_data;
+	TRY(send_first_frame(&image_data, client_width, client_height));
+	
+	unsigned region_width = client_width / width_divisor;
+	unsigned region_height = client_height / height_divisor;
+	while (state == STATE_HANDLE_CLIENT) {
+		long long frame_start_time = get_time_nsec();
+		
+		TRY(send_next_frame(&image_data, client_width, client_height,
+				region_width, region_height));
+
+		long long frame_duration = get_time_nsec() - frame_start_time;
+		long long sleep_time = NSECS_PER_SEC / max_fps - frame_duration;
+		if (sleep_time > 0)
+			usleep(sleep_time / NSECS_PER_MSEC);
+		/*else
+		if (stats_enabled && sleep_time < 0)
+			printf("[~] Too slow! Frame duration is %lld ms.\n",
+					frame_duration / NSECS_PER_MSEC);*/ // LOG:
+	}
 	
 	FINALLY;
 	#undef FINALLY
@@ -432,77 +481,118 @@ ExcCode server_handle_client() {
 	return 0;
 }
 
-void server_shutdown() {
-	close(serv_fd);
-	if (has_stats && stats_enabled && !profiler_save(stats_filename))
-		printf("[*] Stats saved to \"%s\"\n", stats_filename);
-}
 
+#define ERR_LOCK_FILE_CONTENT "Lock file \"%s\" doesn't contain PID"
+#define ERR_LOCK_ALREADY_RUNNING \
+		"It appears the daemon is already running with PID %d"
+#define ERR_LOCK_DEFUNCT "Lock file \"%s\" has been detected. It appears "\
+		"it's owned by the process with PID %d, which is now defunct. "\
+		"Delete the lock file and try again."
+#define ERR_LOCK_ACQUIRE "Failed to acquire exclusive lock on lock file \"%s\""
 
-ExcCode screen_of_display(xcb_connection_t *c, int screen,
-		xcb_screen_t **res) {
-	xcb_screen_iterator_t iter = xcb_setup_roots_iterator(xcb_get_setup(c));
-	for (int i = 0; iter.rem; i++) {
-		if (i == screen) {
-			*res = iter.data;
-			return 0;
+#define ERR_DAEMON_START "Failed to start daemon"
+
+#define PID_BUFFER_SIZE 256
+char pid_buffer[PID_BUFFER_SIZE];
+
+ExcCode daemon_init(int *lock_fd) {
+	// Try to grab the lock file
+	*lock_fd = open(lock_filename, O_RDWR | O_CREAT | O_EXCL, 0644);
+	if (*lock_fd == -1) {
+		FILE *lock_file = fopen(lock_filename, "r");
+		if (lock_file == NULL)
+			THROW(ERR_FILE_CREATE, lock_filename);		
+		#undef FINALLY
+		#define FINALLY fclose(lock_file);
+		int lock_pid;
+		if (fscanf(lock_file, "%d", &lock_pid) != 1)
+			THROW(ERR_LOCK_FILE_CONTENT, lock_filename);
+		FINALLY;
+		#undef FINALLY
+		#define FINALLY
+		
+		// Check whether process with PID from the lock file is running
+		if (!kill(lock_pid, 0)) {
+			THROW(ERR_LOCK_ALREADY_RUNNING, lock_pid);
+		} else
+		if (errno == ESRCH) {
+			THROW(ERR_LOCK_DEFUNCT, lock_filename, lock_pid);
+		} else {
+			THROW(ERR_LOCK_ACQUIRE, lock_filename);
 		}
-		xcb_screen_next(&iter);
+	}		
+	#undef FINALLY
+	#define FINALLY close(*lock_fd);
+	
+	// Set a lock on the lock file
+	if (lockf(*lock_fd, F_TLOCK, 0) < 0)
+		THROW(ERR_LOCK_ACQUIRE, lock_filename);
+		
+	// Set our current working directory to root to avoid tying up
+	// any directories
+	if (chdir("/") < 0)
+		THROW(ERR_DAEMON_START);
+	
+	// Move ourselves into the background and become a daemon.
+	// Open file descriptors among others are inherited here.
+	switch (fork()) {
+		case 0:
+			break;
+		case -1:
+			THROW(ERR_DAEMON_START);
+			break;
+		default:
+			exit(EXIT_SUCCESS);
+			break;
 	}
-	THROW(ERR_X_REQUEST);
+	
+	// Make the process a session and process group leader
+	if (setsid() < 0)
+		THROW(ERR_DAEMON_START);
+	
+	// Save PID
+	snprintf(pid_buffer, PID_BUFFER_SIZE, "%d\n", getpid());
+	if (write(*lock_fd, pid_buffer, strlen(pid_buffer)) < 0)
+		THROW(ERR_FILE_WRITE, lock_filename);
+		
+	// We don't need to execute FINALLY because
+	// we still need lock file descriptor
+	#undef FINALLY
+	#define FINALLY
+	
+	printf("[+] " DAEMON_NAME " started (PID %d)\n", getpid());
+	
+	// Close unnecessary resources
+	for (int i = getdtablesize(); i >= 0; i--)
+		if (i != *lock_fd)
+			close(i);
+
+	// Restore standard IO file descriptors
+	int stdio_fd = open("/dev/null", O_RDWR);
+	dup(stdio_fd);
+	dup(stdio_fd);
+
+	// Restrict file creation mode to 640 for security purposes
+	umask(0137);
+	
+	return 0;
 }
 
-ExcCode serve(int argc, char *argv[]) {
-	printf("InkMonitor v0.01 Alpha 4 - Server\n");
-	
-	get_default_config_path("inkmonitor-server.ini",
-			config_filename, CONFIG_FILENAME_SIZE);
-	TRY(parse_arguments(argc, argv));
-	
-	int default_screen_no;
-	xcb_connection_t *display = xcb_connect(NULL, &default_screen_no);
-	if (xcb_connection_has_error(display))
-		THROW(ERR_X_CONNECT);
-	xcb_screen_t *screen;
-	TRY(screen_of_display(display, default_screen_no, &screen));
-	int screen_width = screen->width_in_pixels;
-	int screen_height = screen->height_in_pixels;
-	xcb_window_t root = screen->root;
-	control_screen_dimensions_set(screen_width, screen_height);
-	
-	TRY(screen_init(display, screen, root));
-	TRY(shortcuts_init(display, screen, root));
-	
-	TRY(options_config_load(config_filename));
-	printf(
-		"    Configuration: %s\n"
-		"    Monitor resolution: %dx%d\n",
-		config_filename, screen_width, screen_height
-	);
-	
-	Imlib_Font label_font = imlib_load_font(label_font_name);
-	if (label_font == NULL)
-		THROW(ERR_FONT, label_font_name);
-	imlib_context_set_font(label_font);
-	
-	pthread_t shortcuts_thread;
-	int shortcuts_res;
-	if (pthread_mutex_init(&control_lock, NULL))
-		THROW(ERR_MUTEX_INIT);
-	if (pthread_create(&shortcuts_thread, NULL,
-			handle_shortcuts, &shortcuts_res))
-		THROW(ERR_THREAD_CREATE);
-	
+ExcCode daemon_main() {
 	TRY(server_create());
 	
 	#undef FINALLY
-	#define FINALLY server_shutdown();
+	#define FINALLY {\
+		server_destroy();\
+		state = STATE_SHUTDOWN;\
+	}
 	
 	TRY(server_setup());
-	printf("[+] Listen on %s:%d\n", server_host, server_port);
-	while (1)
-		if (server_handle_client())
-			show_error(exc_message, 0);
+	//printf("[+] Listen on %s:%d\n", server_host, server_port); // LOG:
+	while (state == STATE_LISTEN || state == STATE_HANDLE_CLIENT)
+		if (server_handle_client()) {
+			//show_error(exc_message, 0); // LOG:
+		}
 	
 	FINALLY;
 	#undef FINALLY
@@ -511,32 +601,49 @@ ExcCode serve(int argc, char *argv[]) {
 }
 
 void sigint_handler(int code) {
-	if (handle_client_flag) {
-		client_disconnect();
-		printf("[*] Client disconnected\n");
-	} else {
-		server_shutdown();
-		exit(EXIT_SUCCESS);
-	}
+	if (state == STATE_HANDLE_CLIENT)
+		state = STATE_LISTEN;
+	else
+	if (state == STATE_LISTEN)
+		state = STATE_SHUTDOWN;
 }
 
 #define ERR_SIGPIPE "Connection closed"
 
 void sigpipe_handler(int code) {
-	if (handle_client_flag) {
-		client_disconnect();
-		show_error(ERR_SIGPIPE, 0);
-	} else {
-		server_shutdown();
-		show_error(ERR_SIGPIPE, 1);
+	if (state == STATE_HANDLE_CLIENT) {
+		state = STATE_LISTEN;
+		//show_error(ERR_SIGPIPE, 0); // LOG:
+	} else
+	if (state == STATE_LISTEN) {
+		state = STATE_SHUTDOWN;
+		//show_error(ERR_SIGPIPE, 1); // LOG:
 	}
 }
 
-int main(int argc, char *argv[]) {
-	signal(SIGINT, sigint_handler);
-	signal(SIGPIPE, sigpipe_handler);
+ExcCode perform_action(int argc, char *argv[]) {
+	printf("InkMonitor v0.01 Alpha 4 - Server\n");
 	
-	if (serve(argc, argv))
-		show_error(exc_message, 1);
+	TRY(parse_arguments(argc, argv));
+	
+	if (!strcmp(action, "start")) {
+		int lock_fd; //
+		TRY(daemon_init(&lock_fd));
+		
+		signal(SIGINT, sigint_handler); // FIXME: May be kick possibility via SIGINT? "inkmonitord kick"?
+		signal(SIGPIPE, sigpipe_handler);
+		
+		if (daemon_main()) {
+			//show_error(exc_message, 1); // LOG:
+			exit(EXIT_FAILURE);
+		}
+		exit(EXIT_SUCCESS); // FIXME: maybe some signals need to terminate daemon and return failure?
+	} else 
+		THROW(ERR_ACTION_UNKNOWN, action);
+}
+
+int main(int argc, char *argv[]) {
+	if (perform_action(argc, argv))
+		show_error(exc_message);
 	return 0;
 }

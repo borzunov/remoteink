@@ -6,6 +6,7 @@
 
 extern ExcCode shortcuts_init(xcb_connection_t *cur_display,
 		xcb_screen_t *cur_screen, xcb_window_t cur_root);
+extern void shortcuts_free();
 
 struct Hotkey {
 	xcb_keycode_t *keycodes;
@@ -20,6 +21,7 @@ struct Shortcut {
 };
 
 extern ExcCode shortcuts_handle_start(const struct Shortcut shortcuts[]);
+extern void shortcuts_handle_stop();
 
 
 #endif

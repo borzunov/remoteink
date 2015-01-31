@@ -1,25 +1,20 @@
 SOURCES=../common/exceptions.c ../common/ini_parser.c ../common/utils.c control.c main.c options.c profiler.c screen.c shortcuts.c transfer.c
 OBJDIR=obj
 OBJECTS=$(addprefix $(OBJDIR)/, $(addsuffix .o, $(notdir $(SOURCES))))
-CONFIG_DEFAULT=default.ini
-CONFIG=$(OBJDIR)/inkmonitor-server.ini
-EXECUTABLE=$(OBJDIR)/inkmonitor-server
+EXECUTABLE=$(OBJDIR)/inkmonitord
 
 CC=gcc
-CFLAGS=-std=gnu99 -pedantic -Wall -O3
+CFLAGS=-std=gnu99 -pedantic -Wall -g
 LDFLAGS=
 LIBS=-lcrypt -lImlib2 -lm -lpthread -lrt -lX11 -lxcb -lxcb-keysyms -lxcb-xfixes
 
-all: $(EXECUTABLE) $(CONFIG)
+all: $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJDIR) $(OBJECTS)
 	$(CC) -o $@ $(OBJECTS) $(LDFLAGS) $(LIBS)
 
 $(OBJDIR):
 	mkdir $(OBJDIR)
-
-$(CONFIG): $(CONFIG_DEFAULT)
-	cp $(CONFIG_DEFAULT) $(CONFIG)
 
 -include $(OBJDIR)/*.d
 

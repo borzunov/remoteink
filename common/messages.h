@@ -6,6 +6,7 @@
 #define ERR_THREAD_CREATE "Failed to create thread"
 #define ERR_MUTEX_INIT "Failed to initialize mutex"
 
+#define ERR_FILE_CREATE "Can't create file \"%s\""
 #define ERR_FILE_OPEN_FOR_READING "Can't open file \"%s\" for reading"
 #define ERR_FILE_OPEN_FOR_WRITING "Can't open file \"%s\" for writing"
 #define ERR_FILE_READ "Can't read from file \"%s\""

@@ -13,6 +13,7 @@
 #include <crypt.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <libgen.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -36,47 +37,23 @@ void show_version() {
 	printf("Copyright (c) 2013-2015 Alexander Borzunov\n");
 }
 
-void show_help() {
+void show_help(char *filename) {
 	printf(
 		"Server for tool for using E-Ink reader as computer monitor\n"
 		"\n"
 		"Usage:\n"
-		"    inkmonitor-server [start|stop]\n"
+		"    %s [start | stop | status | kick | option]\n"
 		"\n"
-		"Standard options:\n"
+		"Actions:\n"
+		"    start     Start the daemon\n"
+		"    stop      Stop the daemon\n"
+		"    status    Check wheter the daemon is running\n"
+		"    kick      Ask the daemon to close the current connection\n"
+		"\n"
+		"Options:\n"
 		"    -h, --help    Display this help and exit.\n"
-		"    --version     Output version info and exit.\n"
-	);
-}
-
-#define ERR_ARG_EXCESS "Excess argument is present (see --help)"
-#define ERR_ACTION_UNSPECIFIED "You need to specify action (see --help)"
-#define ERR_ACTION_UNKNOWN "Unknown action \"%s\" (see --help)"
-
-const char *action = NULL;
-
-ExcCode parse_arguments(int argc, char *argv[]) {
-	int pos = 0;
-	int i;
-	for (i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
-			show_help();
-			exit(EXIT_SUCCESS);
-		}
-		if (!strcmp(argv[i], "--version")) {
-			show_version();
-			exit(EXIT_SUCCESS);
-		}
-		
-		if (pos == 0)
-			action = argv[i];
-		else
-			PANIC(ERR_ARG_EXCESS);
-		pos++;
-	}
-	if (pos == 0)
-		PANIC(ERR_ACTION_UNSPECIFIED);
-	return 0;
+		"    --version     Output version info and exit.\n",
+	basename(filename));
 }
 
 
@@ -481,7 +458,7 @@ ExcCode server_handle_client(const struct sockaddr_in *client_addr) {
 
 
 void fatal_handler(int code) {
-	syslog(LOG_NOTICE, "Caught signal \"%s\"", strsignal(code));
+	syslog(LOG_NOTICE, "Caught signal \"%s\", shutting down", strsignal(code));
 	
 	pop_all_defers();
 	exit(EXIT_SUCCESS);
@@ -575,6 +552,7 @@ ExcCode daemon_main() {
 #define ERR_LOCK_FILE_CONTENT "Lock file \"%s\" doesn't contain PID"
 #define ERR_LOCK_ALREADY_RUNNING \
 		"It appears the daemon is already running with PID %d"
+#define ERR_LOCK_ISNT_RUNNING "The daemon isn't running"
 #define ERR_LOCK_DEFUNCT "Lock file \"%s\" has been detected. It appears "\
 		"it's owned by the process with PID %d, which is now defunct. "\
 		"Delete the lock file and try again."
@@ -582,13 +560,41 @@ ExcCode daemon_main() {
 
 #define ERR_DAEMON_START "Failed to start daemon"
 
+#define ERR_PROCESS_CHECK "Failed to check existence of process with PID %d"
+#define ERR_SIGNAL_SEND "Failed to send signal to process with PID %d"
+
 #define PID_BUFFER_SIZE 256
 char pid_buffer[PID_BUFFER_SIZE];
+
+enum SendSignalResult {
+	SEND_FAIL_OPEN_LOCK, SEND_INCORRECT_LOCK_FILE_CONTENT, SEND_DEFUNCT,
+	SEND_FAIL_SEND_SIGNAL, SEND_OK
+};
 
 FILE *lock_file;
 
 void defer_fclose_lock_file() {
 	fclose(lock_file);
+}
+
+enum SendSignalResult send_signal_to_daemon(int signal, pid_t *lock_pid) {	
+	lock_file = fopen(lock_filename, "r");
+	if (lock_file == NULL)
+		return SEND_FAIL_OPEN_LOCK;
+	push_defer(defer_fclose_lock_file);
+	
+	if (fscanf(lock_file, "%d", lock_pid) != 1)
+		return SEND_INCORRECT_LOCK_FILE_CONTENT;
+		
+	pop_defer(defer_fclose_lock_file);
+	
+	// Check whether process with PID from the lock file is running
+	if (kill(*lock_pid, signal)) {
+		if (errno == ESRCH)
+			return SEND_DEFUNCT;
+		return SEND_FAIL_SEND_SIGNAL;
+	}
+	return SEND_OK;
 }
 
 int lock_fd;
@@ -602,25 +608,18 @@ ExcCode run_daemon() {
 	// Try to grab the lock file
 	lock_fd = open(lock_filename, O_RDWR | O_CREAT | O_EXCL, 0644);
 	if (lock_fd == -1) {
-		lock_file = fopen(lock_filename, "r");
-		if (lock_file == NULL)
-			PANIC(ERR_FILE_CREATE, lock_filename);
-		push_defer(defer_fclose_lock_file);
-		
-		int lock_pid;
-		if (fscanf(lock_file, "%d", &lock_pid) != 1)
-			PANIC_WITH_DEFER(ERR_LOCK_FILE_CONTENT, lock_filename);
-			
-		pop_defer(defer_fclose_lock_file);
-		
-		// Check whether process with PID from the lock file is running
-		if (!kill(lock_pid, 0)) {
-			PANIC(ERR_LOCK_ALREADY_RUNNING, lock_pid);
-		} else
-		if (errno == ESRCH) {
-			PANIC(ERR_LOCK_DEFUNCT, lock_filename, lock_pid);
-		} else {
-			PANIC(ERR_LOCK_ACQUIRE, lock_filename);
+		pid_t lock_pid;
+		switch (send_signal_to_daemon(0, &lock_pid)) {
+			case SEND_FAIL_OPEN_LOCK:
+				PANIC(ERR_FILE_CREATE, lock_filename);
+			case SEND_INCORRECT_LOCK_FILE_CONTENT:
+				PANIC(ERR_LOCK_FILE_CONTENT, lock_filename);
+			case SEND_DEFUNCT:
+				PANIC(ERR_LOCK_DEFUNCT, lock_filename, lock_pid);
+			case SEND_FAIL_SEND_SIGNAL:
+				PANIC(ERR_PROCESS_CHECK, lock_pid);
+			case SEND_OK:
+				PANIC(ERR_LOCK_ALREADY_RUNNING, lock_pid);
 		}
 	}
 	
@@ -691,16 +690,83 @@ ExcCode run_daemon() {
 	return 0;
 }
 
+ExcCode send_action_to_daemon(int signal, pid_t *lock_pid) {
+	switch (send_signal_to_daemon(signal, lock_pid)) {
+		case SEND_FAIL_OPEN_LOCK:
+			PANIC(ERR_LOCK_ISNT_RUNNING);
+		case SEND_INCORRECT_LOCK_FILE_CONTENT:
+			PANIC(ERR_LOCK_FILE_CONTENT, lock_filename);
+		case SEND_DEFUNCT:
+			PANIC(ERR_LOCK_DEFUNCT, lock_filename, *lock_pid);
+		case SEND_FAIL_SEND_SIGNAL:
+			PANIC(ERR_SIGNAL_SEND, *lock_pid);
+		default:
+			return 0;
+	}
+}
+
+ExcCode check_whether_daemon_running(int *res, pid_t *lock_pid) {
+	switch (send_signal_to_daemon(0, lock_pid)) {
+		case SEND_FAIL_OPEN_LOCK:
+			*res = 0;
+			return 0;
+		case SEND_INCORRECT_LOCK_FILE_CONTENT:
+			PANIC(ERR_LOCK_FILE_CONTENT, lock_filename);
+		case SEND_DEFUNCT:
+			PANIC(ERR_LOCK_DEFUNCT, lock_filename, *lock_pid);
+		case SEND_FAIL_SEND_SIGNAL:
+			PANIC(ERR_PROCESS_CHECK, *lock_pid);
+		default:
+			*res = 1;
+			return 0;
+	}
+}
+
+#define ERR_ARG_EXCESS "Excess argument is present (see --help)"
+#define ERR_ACTION_UNSPECIFIED "You need to specify action (see --help)"
+#define ERR_ACTION_UNKNOWN "Unknown action \"%s\" (see --help)"
+
 ExcCode perform_action(int argc, char *argv[]) {
 	printf("InkMonitor v0.01 Alpha 4 - Server\n");
 	
-	TRY(parse_arguments(argc, argv));
+	if (argc < 2)
+		PANIC(ERR_ACTION_UNSPECIFIED);
+	if (argc > 2)
+		PANIC(ERR_ARG_EXCESS);
+	const char *action = argv[1];
 	
+	if (!strcmp(action, "-h") || !strcmp(action, "--help")) {
+		show_help(argv[0]);
+		exit(EXIT_SUCCESS);
+	}
+	if (!strcmp(action, "--version")) {
+		show_version();
+		exit(EXIT_SUCCESS);
+	}
+	
+	pid_t pid;
 	if (!strcmp(action, "start")) {
 		TRY(run_daemon());
-		return 0;
+	} else
+	if (!strcmp(action, "stop")) {
+		TRY(send_action_to_daemon(SIGTERM, &pid));
+		printf("[+] " DAEMON_NAME " stopped (PID %d)\n", pid);
+	} else
+	if (!strcmp(action, "status")) {
+		int is_running;
+		TRY(check_whether_daemon_running(&is_running, &pid));
+		if (is_running)
+			printf("[*] " DAEMON_NAME " is running (PID %d)\n", pid);
+		else
+			printf("[*] " DAEMON_NAME " isn't running\n");
+	} else
+	if (!strcmp(action, "kick")) {
+		TRY(send_action_to_daemon(SIGINT, &pid));
+		printf("[+] " DAEMON_NAME " (PID %d) "
+				"asked to close the current connection\n", pid);
 	} else
 		PANIC(ERR_ACTION_UNKNOWN, action);
+	return 0;
 }
 
 int main(int argc, char *argv[]) {

@@ -81,7 +81,7 @@ ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
 					) {
 						TRY_WITH_DEFER(cur_param->setter(
 								line_buffer, line_buffer + i + 3));
-						cur_param->required = 0;
+						cur_param->expected = 0;
 						break;
 					}
 				}
@@ -101,7 +101,7 @@ ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
 		const struct IniSection *cur_section = &sections[i];
 		for (int j = 0; cur_section->params[j].key != NULL; j++) {
 			const struct IniParam *cur_param = &cur_section->params[j];
-			if (cur_param->required)
+			if (cur_param->expected)
 				PANIC(ERR_INI_REQUIRED_PARAM, cur_param->key,
 						cur_section->title, filename);
 		}

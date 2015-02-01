@@ -481,20 +481,16 @@ ExcCode server_handle_client(const struct sockaddr_in *client_addr) {
 
 
 void fatal_handler(int code) {
-	syslog(LOG_NOTICE, "Caught signal %s", strsignal(code));
+	syslog(LOG_NOTICE, "Caught signal \"%s\"", strsignal(code));
 	
-	state = STATE_SHUTDOWN;
-	close(serv_fd);
-	
+	pop_all_defers();
 	exit(EXIT_SUCCESS);
 }
 
 void term_handler(int code) {
 	syslog(LOG_INFO, "Server shutted down");
 	
-	state = STATE_SHUTDOWN;
-	close(serv_fd);
-	
+	pop_all_defers();
 	exit(EXIT_SUCCESS);
 }
 

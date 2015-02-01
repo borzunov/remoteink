@@ -53,12 +53,17 @@ void profiler_finish(int stage) {
 #define BYTES_PER_MIB (1024LL * 1024)
 #define BITS_PER_MBIT (1000LL * 1000)
 
+FILE *f;
+
+void defer_profiler_fclose_f() {
+	fclose(f);
+}
+
 ExcCode profiler_save(const char *filename) {
-	FILE *f = fopen(filename, "w");
+	f = fopen(filename, "w");
 	if (f == NULL)
-		THROW(ERR_FILE_OPEN_FOR_WRITING, filename);
-	#undef FINALLY
-	#define FINALLY fclose(f);
+		PANIC(ERR_FILE_OPEN_FOR_WRITING, filename);
+	push_defer(defer_profiler_fclose_f);
 	
 	double speed = ((double) traffic_compressed *
 				BITS_PER_BYTE / BITS_PER_MBIT) /
@@ -74,7 +79,7 @@ ExcCode profiler_save(const char *filename) {
 		(double) traffic_uncompressed / BYTES_PER_MIB,
 		(double) traffic_compressed / traffic_uncompressed * 100.0
 	) < 0)
-		THROW(ERR_FILE_WRITE, filename);
+		PANIC_WITH_DEFER(ERR_FILE_WRITE, filename);
 	
 	int i;
 	for (i = 0; i < STAGES_COUNT; i++) {
@@ -91,11 +96,9 @@ ExcCode profiler_save(const char *filename) {
 			(double) stages_min[i] / NSECS_PER_MSEC,
 					(double) stages_max[i] / NSECS_PER_MSEC
 		) < 0)
-			THROW(ERR_FILE_WRITE, filename);
+			PANIC_WITH_DEFER(ERR_FILE_WRITE, filename);
 	}
 	
-	FINALLY;
-	#undef FINALLY
-	#define FINALLY
+	pop_defer(defer_profiler_fclose_f);
 	return 0;
 }

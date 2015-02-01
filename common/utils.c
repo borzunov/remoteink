@@ -15,7 +15,7 @@
 ExcCode get_executable_dirname(char *buffer, int buffer_size) {
 	int path_len = readlink(EXECUTABLE_SYMLINK, buffer, buffer_size - 1);
 	if (path_len == -1)
-		THROW("Failed to retreive the application directory: "
+		PANIC("Failed to retreive the application directory: "
 				"Can't resolve \"" EXECUTABLE_SYMLINK "\"");
 	buffer[path_len] = '\0';
 	
@@ -46,7 +46,7 @@ ExcCode parse_int(const char *key, const char *value, int min, int max,
 		sscanf(value, "%d", &number) == 1 &&
 		min <= number && number <= max
 	))
-		THROW(ERR_INVALID_INT, key, min, max);
+		PANIC(ERR_INVALID_INT, key, min, max);
 	*res = number;
 	return 0;
 }
@@ -59,7 +59,7 @@ ExcCode parse_double(const char *key, const char *value,
 		sscanf(value, "%lf", &number) == 1 &&
 		min <= number && number <= max
 	))
-		THROW(ERR_INVALID_DOUBLE, key, min, max);
+		PANIC(ERR_INVALID_DOUBLE, key, min, max);
 	*res = number;
 	return 0;
 }
@@ -71,6 +71,6 @@ ExcCode parse_bool(const char *key, const char *value, int *res) {
 	if (!strcasecmp(value, INI_VALUE_TRUE))
 		*res = 1;
 	else
-		THROW(ERR_INVALID_BOOL, key);
+		PANIC(ERR_INVALID_BOOL, key);
 	return 0;
 }

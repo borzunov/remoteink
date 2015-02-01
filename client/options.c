@@ -46,7 +46,7 @@ ExcCode load_orientation(const char *key, const char *value) {
 			orientation = i;
 			return 0;
 		}
-	THROW(ERR_INCORRECT_ORIENTATION);
+	PANIC(ERR_INCORRECT_ORIENTATION);
 }
 
 ExcCode save_orientation(const char *key, char *buffer, int buffer_size) {

@@ -218,7 +218,7 @@ ExcCode exec_connect() {
 	
 	int res;
 	if (pthread_create(&client_thread, NULL, start_client_connect, &res) != 0)
-		THROW(ERR_THREAD_CREATE);
+		PANIC(ERR_THREAD_CREATE);
 	return 0;
 }
 

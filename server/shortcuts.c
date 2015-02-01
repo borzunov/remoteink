@@ -25,7 +25,7 @@ ExcCode shortcuts_init(xcb_connection_t *cur_display,
 			
 	key_symbols_table = xcb_key_symbols_alloc(display);
 	if (key_symbols_table == NULL)
-		THROW(ERR_X_REQUEST);
+		PANIC(ERR_X_REQUEST);
 	return 0;
 }
 
@@ -70,16 +70,16 @@ ExcCode shortcuts_parse(const char *str, struct Hotkey *res) {
 					break;
 				}
 			if (!modifier_found)
-				THROW(ERR_SHORTCUT_UNKNOWN_MODIFIER, str);
+				PANIC(ERR_SHORTCUT_UNKNOWN_MODIFIER, str);
 			word_begin = i + 1;
 		}
 		
 	KeySym keysym = XStringToKeysym(str + word_begin);
 	if (keysym == NoSymbol)
-		THROW(ERR_SHORTCUT_UNKNOWN_KEY, str + word_begin, str);
+		PANIC(ERR_SHORTCUT_UNKNOWN_KEY, str + word_begin, str);
 	res->keycodes = xcb_key_symbols_get_keycode(key_symbols_table, keysym);
 	if (res->keycodes == NULL)
-		THROW(ERR_SHORTCUT_UNKNOWN_KEY, str + word_begin, str);
+		PANIC(ERR_SHORTCUT_UNKNOWN_KEY, str + word_begin, str);
 	return 0;
 }
 
@@ -100,7 +100,7 @@ ExcCode grab_keycode(uint8_t owner_events,
 				owner_events, grab_window,
 				modifiers | submask, keycode, pointer_mode, keyboard_mode);
 		if (xcb_request_check(display, cookie) != NULL)
-			THROW(ERR_X_REQUEST);
+			PANIC(ERR_X_REQUEST);
 		if (!submask)
 			break;
 	}

@@ -14,19 +14,25 @@ before section definition in \"%s\""
 #define ERR_INI_REQUIRED_PARAM "Required parameter \"%s\" in section \"%s\" "\
 		"not found in \"%s\""
 
+FILE *f;
+
+void defer_ini_parser_fclose_f() {
+	fclose(f);
+}
+
 #define LINE_BUFFER_SIZE 256
 char line_buffer[LINE_BUFFER_SIZE];
 
 ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
-	FILE *f = fopen(filename, "r");
+	f = fopen(filename, "r");
 	if (f == NULL)
-		THROW(ERR_FILE_OPEN_FOR_READING, filename);
-	#undef FINALLY
-	#define FINALLY fclose(f);
+		PANIC(ERR_FILE_OPEN_FOR_READING, filename);
+	push_defer(defer_ini_parser_fclose_f);
+	
 	const struct IniSection *cur_section = NULL;
 	while (fgets(line_buffer, LINE_BUFFER_SIZE, f)) {
 		if (ferror(f))
-			THROW(ERR_FILE_READ, filename);
+			PANIC_WITH_DEFER(ERR_FILE_READ, filename);
 		
 		int len = strlen(line_buffer);
 		if (line_buffer[len - 1] == '\n')
@@ -48,7 +54,8 @@ ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
 					break;
 				}
 			if (cur_section == NULL)
-				THROW(ERR_INI_UNKNOWN_SECTION, line_buffer + 1, filename);
+				PANIC_WITH_DEFER(ERR_INI_UNKNOWN_SECTION,
+						line_buffer + 1, filename);
 			continue;
 		}
 		
@@ -62,7 +69,8 @@ ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
 				line_buffer[i] = 0;
 				
 				if (cur_section == NULL)
-					THROW(ERR_INI_PARAM_BEFORE_SECTION, line_buffer, filename);
+					PANIC_WITH_DEFER(ERR_INI_PARAM_BEFORE_SECTION,
+							line_buffer, filename);
 				
 				int j;
 				for (j = 0; cur_section->params[j].key != NULL; j++) {
@@ -71,31 +79,30 @@ ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
 						!strcmp(INI_ANY_KEY, cur_param->key) ||
 						!strcmp(line_buffer, cur_param->key)
 					) {
-						TRY(cur_param->setter(
+						TRY_WITH_DEFER(cur_param->setter(
 								line_buffer, line_buffer + i + 3));
 						cur_param->required = 0;
 						break;
 					}
 				}
 				if (cur_section->params[j].key == NULL)
-					THROW(ERR_INI_UNKNOWN_KEY,
+					PANIC_WITH_DEFER(ERR_INI_UNKNOWN_KEY,
 							line_buffer, cur_section->title, filename);
 				break;
 			}
 			
 		if (i == len - 2)
-			THROW(ERR_INI_AMBIGOUS_LINE, line_buffer, filename);
+			PANIC_WITH_DEFER(ERR_INI_AMBIGOUS_LINE, line_buffer, filename);
 	}
-	FINALLY;
-	#undef FINALLY
-	#define FINALLY
+	
+	pop_defer(defer_ini_parser_fclose_f);
 	
 	for (int i = 0; sections[i].title != NULL; i++) {
 		const struct IniSection *cur_section = &sections[i];
 		for (int j = 0; cur_section->params[j].key != NULL; j++) {
 			const struct IniParam *cur_param = &cur_section->params[j];
 			if (cur_param->required)
-				THROW(ERR_INI_REQUIRED_PARAM, cur_param->key,
+				PANIC(ERR_INI_REQUIRED_PARAM, cur_param->key,
 						cur_section->title, filename);
 		}
 	}
@@ -106,27 +113,26 @@ ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
 char value_buffer[VALUE_BUFFER_SIZE];
 
 ExcCode ini_save(const char *filename, const struct IniSection sections[]) {
-	FILE *f = fopen(filename, "w");
+	f = fopen(filename, "w");
 	if (f == NULL)
-		THROW(ERR_FILE_OPEN_FOR_WRITING, filename);
-	#undef FINALLY
-	#define FINALLY fclose(f);
+		PANIC(ERR_FILE_OPEN_FOR_WRITING, filename);
+	push_defer(defer_ini_parser_fclose_f);
+	
 	for (int i = 0; sections[i].title != NULL; i++) {
 		const struct IniSection *cur_section = &sections[i];
 		if (fprintf(f, "[%s]\n", cur_section->title) < 0)
-			THROW(ERR_FILE_WRITE, filename);
+			PANIC_WITH_DEFER(ERR_FILE_WRITE, filename);
 		for (int j = 0; cur_section->params[j].key != NULL; j++) {
 			const struct IniParam *cur_param = &cur_section->params[j];
 			if (!strcmp(INI_ANY_KEY, cur_param->key))
-				THROW(ERR_INI_SAVE_ANY_KEY);
-			TRY(cur_param->getter(cur_param->key,
+				PANIC_WITH_DEFER(ERR_INI_SAVE_ANY_KEY);
+			TRY_WITH_DEFER(cur_param->getter(cur_param->key,
 					value_buffer, VALUE_BUFFER_SIZE));
 			if (fprintf(f, "%s = %s\n", cur_param->key, value_buffer) < 0)
-				THROW(ERR_FILE_WRITE, filename);
+				PANIC_WITH_DEFER(ERR_FILE_WRITE, filename);
 		}
 	}
-	FINALLY;
-	#undef FINALLY
-	#define FINALLY
+	
+	pop_defer(defer_ini_parser_fclose_f);
 	return 0;
 }

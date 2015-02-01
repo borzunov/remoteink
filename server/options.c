@@ -166,7 +166,7 @@ ExcCode load_shortcut(const char *key, const char *value) {
 	if (!strcmp(value, SHORTCUT_VALUE_DISABLED))
 		return 0;
 	if (shortcuts_count >= SHORTCUTS_MAX_COUNT - 1)
-		THROW(ERR_SHORTCUT_OVERFLOW, SHORTCUTS_MAX_COUNT - 1);
+		PANIC(ERR_SHORTCUT_OVERFLOW, SHORTCUTS_MAX_COUNT - 1);
 	
 	void (*handler)() = NULL;
 	for (int i = 0; handlers[i].key != NULL; i++)
@@ -175,7 +175,7 @@ ExcCode load_shortcut(const char *key, const char *value) {
 			break;
 		}
 	if (handler == NULL)
-		THROW(ERR_SHORTCUT_UNKNOWN_ACTION, key, value);
+		PANIC(ERR_SHORTCUT_UNKNOWN_ACTION, key, value);
 	
 	struct Hotkey hotkey;
 	TRY(shortcuts_parse(value, &hotkey));

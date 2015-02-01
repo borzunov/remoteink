@@ -20,7 +20,7 @@ int client_process;
 ExcCode client_send_confirm() {
 	buffer[0] = RES_CONFIRM;
 	if (write(conn_fd, buffer, 1) < 0 && client_process)
-		THROW(ERR_SOCK_TRANSFER);
+		PANIC(ERR_SOCK_TRANSFER);
 	return 0;
 }
 
@@ -189,7 +189,7 @@ ExcCode client_exec(const char *commands, int len, int *processed,
 				break;
 			#endif
 			default:
-				THROW(ERR_UNSUPPORTED_COMMAND);
+				PANIC(ERR_UNSUPPORTED_COMMAND);
 		}
 	}
 	*processed = len;
@@ -214,7 +214,7 @@ ExcCode client_mainloop(int client_width, int client_height) {
 		if (!client_process || !read_size)
 			break;
 		if (read_size < 0)
-			THROW(ERR_SOCK_TRANSFER);
+			PANIC(ERR_SOCK_TRANSFER);
 		
 		int executed_size;
 		TRY(client_exec(buffer, prefix_size + read_size, &executed_size,
@@ -242,7 +242,7 @@ ExcCode client_string_send(const char *str) {
 	memcpy(buffer + i, str, len);
 	i += len;
 	if (write(conn_fd, buffer, i) < 0)
-		THROW(ERR_SOCK_TRANSFER);
+		PANIC(ERR_SOCK_TRANSFER);
 	return 0;
 }
 
@@ -251,18 +251,18 @@ ExcCode client_handshake(int client_width, int client_height) {
 	
 	TRY(client_string_send(password));
 	if (read(conn_fd, buffer, 1) != 1)
-		THROW(ERR_SOCK_TRANSFER);
+		PANIC(ERR_SOCK_TRANSFER);
 	if (buffer[0] == PASSWORD_WRONG) {
-		THROW(ERR_WRONG_PASSWORD);
+		PANIC(ERR_WRONG_PASSWORD);
 	} else
 	if (buffer[0] != PASSWORD_CORRECT)
-		THROW(ERR_PROTOCOL);
+		PANIC(ERR_PROTOCOL);
 	
 	int i = 0;
 	WRITE_COORD(client_width, buffer, i);
 	WRITE_COORD(client_height, buffer, i);
 	if (write(conn_fd, buffer, i) < 0)
-		THROW(ERR_SOCK_TRANSFER);
+		PANIC(ERR_SOCK_TRANSFER);
 	return 0;
 }
 
@@ -273,11 +273,11 @@ ExcCode client_connect(int client_width, int client_height) {
 	
 	conn_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (conn_fd < 0)
-		THROW(ERR_SOCK_CREATE);
+		PANIC(ERR_SOCK_CREATE);
 	
 	struct hostent *serv = gethostbyname(server_host);
 	if (serv == NULL)
-		THROW(ERR_SOCK_RESOLVE, server_host);
+		PANIC(ERR_SOCK_RESOLVE, server_host);
 	struct sockaddr_in serv_addr;
 	serv_addr.sin_family = AF_INET;
 	memcpy(&serv_addr.sin_addr.s_addr, serv->h_addr, serv->h_length);
@@ -286,7 +286,7 @@ ExcCode client_connect(int client_width, int client_height) {
 	if (connect(
 		conn_fd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)
 	) < 0)
-		THROW(ERR_SOCK_CONNECT, server_host, server_port);
+		PANIC(ERR_SOCK_CONNECT, server_host, server_port);
 	
 	TRY(client_handshake(client_width, client_height));
 	HideHourglass();

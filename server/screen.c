@@ -21,7 +21,7 @@ ExcCode screen_cursor_init() {
 	xcb_xfixes_query_version_reply_t *reply =
 			xcb_xfixes_query_version_reply(display, cookie, NULL);
 	if (reply == NULL)
-		THROW(ERR_CURSOR);
+		PANIC(ERR_CURSOR);
 	return 0;
 }
 
@@ -49,7 +49,7 @@ ExcCode screen_cursor_blend(int x, int y, Imlib_Image image) {
 			reply->width, reply->height,
 			cursor_data);
 	if (cursor == NULL)
-		THROW(ERR_IMAGE);
+		PANIC(ERR_IMAGE);
 	imlib_context_set_image(cursor);
 	imlib_image_set_has_alpha(1);
 	
@@ -82,12 +82,12 @@ ExcCode screen_shot(int x, int y, int width, int height,
 			XCB_ALL_PLANES);
 	xcb_get_image_reply_t *reply = xcb_get_image_reply(display, cookie, NULL);
 	if (reply == NULL)
-		THROW(ERR_X_REQUEST);
+		PANIC(ERR_X_REQUEST);
 	*res = imlib_create_image_using_copied_data(width, height,
 			(unsigned *) xcb_get_image_data(reply));
 	free(reply);
 	if (*res == NULL)
-		THROW(ERR_IMAGE);
+		PANIC(ERR_IMAGE);
 		
 	if (cursor_capturing_enabled)
 		screen_cursor_blend(x, y, *res);
@@ -102,7 +102,7 @@ ExcCode create_atom(const char *name, uint8_t only_if_exists,
 	xcb_intern_atom_reply_t *reply =
 			xcb_intern_atom_reply(display, cookie, NULL);
 	if (reply == NULL)
-		THROW(ERR_X_REQUEST);
+		PANIC(ERR_X_REQUEST);
 	*res = reply->atom;
 	free(reply);
 	return 0;
@@ -155,7 +155,7 @@ ExcCode screen_cursor_get_position(int *x, int *y, int *same_screen) {
 	xcb_query_pointer_reply_t *reply =
 			xcb_query_pointer_reply(display, cookie, NULL);
 	if (reply == NULL)
-		THROW(ERR_X_REQUEST);
+		PANIC(ERR_X_REQUEST);
 	*x = reply->root_x;
 	*y = reply->root_y;
 	*same_screen = reply->same_screen;
@@ -167,9 +167,9 @@ ExcCode screen_cursor_set_position(int x, int y) {
 	xcb_void_cookie_t cookie =
 			xcb_warp_pointer(display, XCB_NONE, root, 0, 0, 0, 0, x, y);
 	if (xcb_request_check(display, cookie) != NULL)
-		THROW(ERR_X_REQUEST);
+		PANIC(ERR_X_REQUEST);
 	if (xcb_flush(display) <= 0)
-		THROW(ERR_X_REQUEST);
+		PANIC(ERR_X_REQUEST);
 	return 0;
 }
 
@@ -198,7 +198,7 @@ ExcCode window_get_real_geometry(xcb_window_t window,
 	xcb_get_geometry_reply_t *reply =
 			xcb_get_geometry_reply(display, cookie, NULL);
 	if (reply == NULL)
-		THROW(ERR_X_REQUEST);
+		PANIC(ERR_X_REQUEST);
 	*left = reply->x;
 	*top = reply->y;
 	*width = reply->width;
@@ -284,9 +284,9 @@ ExcCode screen_window_unmaximize(xcb_window_t window) {
 			XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT,
 			(const char*) &event);
 	if (xcb_request_check(display, cookie) != NULL)
-		THROW(ERR_X_REQUEST);
+		PANIC(ERR_X_REQUEST);
 	if (xcb_flush(display) <= 0)
-		THROW(ERR_X_REQUEST);
+		PANIC(ERR_X_REQUEST);
 	return 0;
 }
 
@@ -312,8 +312,8 @@ ExcCode screen_window_resize(xcb_window_t window, int width, int height) {
 			client_window, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
 			values);
 	if (xcb_request_check(display, cookie) != NULL)
-		THROW(ERR_X_REQUEST);
+		PANIC(ERR_X_REQUEST);
     if (xcb_flush(display) <= 0)
-		THROW(ERR_X_REQUEST);
+		PANIC(ERR_X_REQUEST);
 	return 0;
 }

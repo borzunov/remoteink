@@ -4,6 +4,7 @@ import crypt
 import getpass
 import os
 import stat
+import string
 
 FILENAME = '/etc/inkmonitord/passwd'
 
@@ -14,8 +15,16 @@ def main():
 		print('[-] Error: Password mismatch')
 		return
 
+	try:
+		salt = crypt.METHOD_SHA512
+	except AttributeError: # Too old Python version
+		alphabet = string.ascii_letters + string.digits + '/.'
+		assert 256 % len(alphabet) == 0
+		salt = '$6$' + ''.join(
+				alphabet[byte % len(alphabet)] for byte in os.urandom(16))
+				
 	with open(FILENAME, 'w') as f:
-		f.write(crypt.crypt(new_password, crypt.METHOD_SHA512) + '\n')
+		f.write(crypt.crypt(new_password, salt) + '\n')
 	os.chmod(FILENAME, stat.S_IRUSR | stat.S_IWUSR)
 	print('[+] Password updated (restart the daemon to apply changes)')
 

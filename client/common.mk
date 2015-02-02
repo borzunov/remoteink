@@ -2,8 +2,6 @@ SDKDIR = /usr/local/pocketbook
 OBJDIR = obj_$(BUILD)
 SYSTEM_LINK = $(OBJDIR)/system
 
--include $(OUT).mk
-
 ifeq ($(BUILD), arm)
 PROJECT = $(OBJDIR)/$(OUT).app
 LIBS += -linkview

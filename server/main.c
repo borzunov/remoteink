@@ -6,11 +6,11 @@
 #include "options.h"
 #include "profiler.h"
 #include "screen.h"
+#include "security.h"
 #include "shortcuts.h"
 #include "transfer.h"
 
 #include <arpa/inet.h>
-#include <crypt.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <libgen.h>
@@ -30,6 +30,8 @@
 #define DAEMON_NAME "inkmonitord"
 
 const char *config_filename = "/etc/" DAEMON_NAME "/config.ini";
+const char *password_filename = "/etc/" DAEMON_NAME "/passwd";
+
 const char *lock_filename = "/var/run/" DAEMON_NAME ".pid";
 
 
@@ -250,32 +252,6 @@ enum State {STATE_SHUTDOWN, STATE_LISTEN, STATE_HANDLE_CLIENT};
 volatile sig_atomic_t state = STATE_LISTEN;
 
 
-int are_strings_equal_stable(const char *a, const char *b) {
-	// Compare strings "a" and "b" in constant time to prevent timing attacks
-	int res = 1;
-	int i;
-	for (i = 0; a[i] & b[i]; i++)
-		res &= (a[i] == b[i]);
-	if (a[i] | b[i])
-		return 0;
-	return res;
-}
-
-#define ERR_CRYPT "Failed to verify password's hash"
-
-ExcCode check_password(const char *suggested_password, int *is_correct) {
-	if (expected_password[0] == '$') {
-		const char *expected_hash = expected_password;
-		const char *suggested_hash = crypt(suggested_password, expected_hash);
-		if (suggested_hash == NULL)
-			PANIC(ERR_CRYPT);
-		*is_correct = are_strings_equal_stable(suggested_hash, expected_hash);
-	} else
-		*is_correct = are_strings_equal_stable(
-				suggested_password, expected_password);
-	return 0;
-}
-
 #define ERR_CLIENT_VERSION "Incompatible client version"
 
 #define TRANSFER_BUFFER_SIZE 256
@@ -289,7 +265,7 @@ ExcCode client_handshake(int *client_width, int *client_height) {
 		
 	TRY(transfer_recv_string(conn_fd, &line));
 	int is_correct;
-	TRY(check_password(line, &is_correct));
+	TRY(security_check_password(line, &is_correct));
 	transfer_buffer[0] = is_correct ? PASSWORD_CORRECT : PASSWORD_WRONG;
 	if (write(conn_fd, transfer_buffer, 1) < 0)
 		PANIC(ERR_SOCK_TRANSFER);
@@ -605,6 +581,9 @@ void defer_close_and_unlink_lock_file() {
 }
 
 ExcCode run_daemon() {
+	// Load password beforehand
+	TRY(security_load_password(password_filename));
+	
 	// Try to grab the lock file
 	lock_fd = open(lock_filename, O_RDWR | O_CREAT | O_EXCL, 0644);
 	if (lock_fd == -1) {
@@ -669,10 +648,14 @@ ExcCode run_daemon() {
 		if (i != lock_fd)
 			close(i);
 
-	// Restore standard IO file descriptors
+	// Restore standard I/O file descriptors
 	int stdio_fd = open("/dev/null", O_RDWR);
-	dup(stdio_fd);
-	dup(stdio_fd);
+	if (stdio_fd == -1)
+		PANIC_WITH_DEFER(ERR_DAEMON_START);
+	if (dup(stdio_fd) == -1)
+		PANIC_WITH_DEFER(ERR_DAEMON_START);
+	if (dup(stdio_fd) == -1)
+		PANIC_WITH_DEFER(ERR_DAEMON_START);
 	
 	openlog(DAEMON_NAME, LOG_CONS, LOG_LOCAL0);
 	

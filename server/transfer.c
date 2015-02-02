@@ -24,7 +24,7 @@ ExcCode transfer_recv_string(int conn_fd, const char **res) {
 	return 0;
 }
 
-ExcCode send_buffer(int conn_fd, const char *buffer, int len) {
+ExcCode send_buffer(int conn_fd, int len) {
 	profiler_start(STAGE_TRANSFER);
 	
 	if (write(conn_fd, buffer, len) < 0)
@@ -63,7 +63,7 @@ ExcCode transfer_image_send_all(
 
 	buffer[i++] = CMD_SOFT_UPDATE;
 	
-	TRY(send_buffer(conn_fd, buffer, i));
+	TRY(send_buffer(conn_fd, i));
 	TRY(wait_confirm(conn_fd));
 	return 0;
 }
@@ -169,7 +169,7 @@ ExcCode transfer_image_send_diff(
 	profiler_traffic_count_compressed(traffic_diffs);
 		
 	if (need_send) {
-		TRY(send_buffer(conn_fd, buffer, i));
+		TRY(send_buffer(conn_fd, i));
 		TRY(wait_confirm(conn_fd));
 	}
 	return 0;

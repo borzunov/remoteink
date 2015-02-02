@@ -98,7 +98,7 @@ ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
 	pop_defer(defer_ini_parser_fclose_f);
 	
 	for (int i = 0; sections[i].title != NULL; i++) {
-		const struct IniSection *cur_section = &sections[i];
+		cur_section = &sections[i];
 		for (int j = 0; cur_section->params[j].key != NULL; j++) {
 			const struct IniParam *cur_param = &cur_section->params[j];
 			if (cur_param->expected)

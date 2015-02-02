@@ -118,17 +118,16 @@ void show_label_with_scale() {
 	control_label_set(label_buffer);
 }
 
-int reset_coord(int screen_side, int frame_side,
-		int window_pos, int window_side) {
+int reset_coord(int frame_side, int window_pos, int window_side) {
 	if (window_side >= frame_side)
 		return window_pos;
 	return window_pos - (frame_side - window_side) / 2;
 }
 
 void reset_position() {
-	active_context->frame_top = reset_coord(screen_height,
+	active_context->frame_top = reset_coord(
 			active_context->frame_height, window_top, window_height);
-	active_context->frame_left = reset_coord(screen_width,
+	active_context->frame_left = reset_coord(
 			active_context->frame_width, window_left, window_width);
 }
 

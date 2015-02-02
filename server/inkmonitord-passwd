@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+
+import crypt
+import getpass
+import os
+import stat
+
+FILENAME = '/etc/inkmonitord/passwd'
+
+def main():
+	new_password = getpass.getpass('New password: ')
+	confirm_password = getpass.getpass('Confirm password: ')
+	if new_password != confirm_password:
+		print('[-] Error: Password mismatch')
+		return
+
+	with open(FILENAME, 'w') as f:
+		f.write(crypt.crypt(new_password, crypt.METHOD_SHA512) + '\n')
+	os.chmod(FILENAME, stat.S_IRUSR | stat.S_IWUSR)
+	print('[+] Password updated (restart the daemon to apply changes)')
+
+if __name__ == '__main__':
+	main()

@@ -553,7 +553,7 @@ void defer_fclose_lock_file() {
 	fclose(lock_file);
 }
 
-enum SendSignalResult send_signal_to_daemon(int signal, pid_t *lock_pid) {	
+enum SendSignalResult send_signal_to_daemon(int signal_code, pid_t *lock_pid) {	
 	lock_file = fopen(lock_filename, "r");
 	if (lock_file == NULL)
 		return SEND_FAIL_OPEN_LOCK;
@@ -565,7 +565,7 @@ enum SendSignalResult send_signal_to_daemon(int signal, pid_t *lock_pid) {
 	pop_defer(defer_fclose_lock_file);
 	
 	// Check whether process with PID from the lock file is running
-	if (kill(*lock_pid, signal)) {
+	if (kill(*lock_pid, signal_code)) {
 		if (errno == ESRCH)
 			return SEND_DEFUNCT;
 		return SEND_FAIL_SEND_SIGNAL;
@@ -673,8 +673,8 @@ ExcCode run_daemon() {
 	return 0;
 }
 
-ExcCode send_action_to_daemon(int signal, pid_t *lock_pid) {
-	switch (send_signal_to_daemon(signal, lock_pid)) {
+ExcCode send_action_to_daemon(int signal_code, pid_t *lock_pid) {
+	switch (send_signal_to_daemon(signal_code, lock_pid)) {
 		case SEND_FAIL_OPEN_LOCK:
 			PANIC(ERR_LOCK_ISNT_RUNNING);
 		case SEND_INCORRECT_LOCK_FILE_CONTENT:

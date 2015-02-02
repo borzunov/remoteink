@@ -1,4 +1,5 @@
 client/obj_*
+server/bin
 server/obj
 *.log
 research/

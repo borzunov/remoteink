@@ -5,7 +5,7 @@
 #include "options.h"
 #include "ui.h"
 
-#define TEXT_TITLE "InkMonitor v0.01 Alpha 4"
+#define TEXT_TITLE "InkMonitor v0.02"
 
 #define CONFIG_FILENAME_SIZE 256
 char config_filename[CONFIG_FILENAME_SIZE];

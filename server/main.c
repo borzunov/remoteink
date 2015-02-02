@@ -710,7 +710,7 @@ ExcCode check_whether_daemon_running(int *res, pid_t *lock_pid) {
 #define ERR_ACTION_UNKNOWN "Unknown action \"%s\" (see --help)"
 
 ExcCode perform_action(int argc, char *argv[]) {
-	printf("InkMonitor v0.01 Alpha 4 - Server\n");
+	printf("InkMonitor v0.02 - Server\n");
 	
 	if (argc < 2)
 		PANIC(ERR_ACTION_UNSPECIFIED);

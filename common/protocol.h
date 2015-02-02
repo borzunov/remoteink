@@ -36,7 +36,7 @@
  *      by the client.
  */
 
-#define HEADER "InkMonitor v0.01"
+#define HEADER "InkMonitor v0.02"
 
 #define PASSWORD_CORRECT '+'
 #define PASSWORD_WRONG   '-'

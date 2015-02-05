@@ -13,12 +13,12 @@
  *      then its content.
  *   2. Client sends length of password (2-byte unsigned integer),
  *      then its content.
- *   3. Server sends one byte that contains character PASSWORD_CORRECT if
- *      password is correct and PASSWORD_WRONG otherwise.
- *   4. Client sends width and height (two 2-byte unsigned integers).
- *   5. Server sends sequence of commands described below. First byte of each
+ *   3. Client sends width and height (two 2-byte unsigned integers).
+ *   4. Server sends sequence of commands described below. First byte of each
  *      command is a character describes its type. The following bytes are
  *      command arguments if they exist:
+ *        - Error message is a null-byte terminated string
+ *          (if CMD_SHOW_ERROR sent, it should be a last command)
  *        - Coordinates are 2-byte unsigned integers
  *        - Color is 3-byte integer interpreted as RGB
  *          (in fact it will be sent as BGR)
@@ -29,17 +29,16 @@
  *      Note: You can define macros CMD_EXTENTED to enable extented command
  *            set, which is implemented in the client but not used in the
  *            current version of the server.
- *   6. After execution of screen update commands client sends one byte that
+ *   5. After execution of screen update commands client sends one byte that
  *      contains character RES_CONFIRM.
- *   7. Also server can send one byte contains character CONN_CHECK instead of
+ *   6. Also server can send one byte contains character CONN_CHECK instead of
  *      the command to check the connection. This character should be ignored
  *      by the client.
  */
 
-#define HEADER "InkMonitor v0.02"
+#define HEADER "InkMonitor-0.02"
 
-#define PASSWORD_CORRECT '+'
-#define PASSWORD_WRONG   '-'
+#define CMD_SHOW_ERROR        'E' // SHOW_ERROR(message)
 
 #define CMD_RESET_POSITION    'X' // RESET_POSITION(x, y)
 #define CMD_SKIP              'N' // SKIP(count)

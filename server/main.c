@@ -187,6 +187,15 @@ ExcCode get_screenshot_data(unsigned **image_data,
 	return 0;
 }
 
+ExcCode get_screenshot_data_checked(unsigned **image_data,
+		int client_width, int client_height, int conn_fd) {
+	if (get_screenshot_data(image_data, client_width, client_height)) {
+		transfer_send_error(conn_fd, exc_message);
+		return -1;
+	}
+	return 0;
+}
+
 
 int serv_fd, conn_fd;
 
@@ -201,8 +210,8 @@ ExcCode send_first_frame(unsigned **image_data,
 	pthread_mutex_lock(&control_lock);
 	push_defer(defer_unlock_control_lock);
 	
-	TRY_WITH_DEFER(get_screenshot_data(
-			image_data, client_width, client_height));
+	TRY_WITH_DEFER(get_screenshot_data_checked(
+			image_data, client_width, client_height, conn_fd));
 	TRY_WITH_DEFER(transfer_image_send_all(
 			conn_fd, *image_data, client_width, client_height));
 	
@@ -224,8 +233,8 @@ ExcCode send_next_frame(unsigned **image_data,
 	
 	profiler_start(STAGE_SHOT);
 	unsigned *next_image_data;
-	TRY_WITH_DEFER(get_screenshot_data(
-			&next_image_data, client_width, client_height));
+	TRY_WITH_DEFER(get_screenshot_data_checked(
+			&next_image_data, client_width, client_height, conn_fd));
 	profiler_finish(STAGE_SHOT);
 	
 	unsigned i, j;
@@ -260,17 +269,18 @@ char transfer_buffer[TRANSFER_BUFFER_SIZE];
 ExcCode client_handshake(int *client_width, int *client_height) {
 	const char *line;
 	TRY(transfer_recv_string(conn_fd, &line));
-	if (strcmp(line, HEADER))
+	if (strcmp(line, HEADER)) {
+		transfer_send_error(conn_fd, ERR_CLIENT_VERSION);
 		PANIC(ERR_CLIENT_VERSION);
+	}
 		
 	TRY(transfer_recv_string(conn_fd, &line));
 	int is_correct;
 	TRY(security_check_password(line, &is_correct));
-	transfer_buffer[0] = is_correct ? PASSWORD_CORRECT : PASSWORD_WRONG;
-	if (write(conn_fd, transfer_buffer, 1) < 0)
-		PANIC(ERR_SOCK_TRANSFER);
-	if (!is_correct)
+	if (!is_correct) {
+		transfer_send_error(conn_fd, ERR_WRONG_PASSWORD);
 		PANIC(ERR_WRONG_PASSWORD);
+	}
 		
 	if (read(conn_fd, transfer_buffer, COORD_SIZE * 2) != COORD_SIZE * 2)
 		PANIC(ERR_SOCK_TRANSFER);

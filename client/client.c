@@ -2,6 +2,7 @@
 #include "../common/protocol.h"
 #include "client.h"
 #include "options.h"
+#include "ui.h"
 
 #include <inkview.h>
 #include <netdb.h>
@@ -30,8 +31,17 @@ ExcCode client_exec(const char *commands, int len, int *processed,
 	unsigned j, count, w, h;
 	for (i = 0; i < len; i++) {
 		switch (commands[i]) {
-			case CONN_CHECK:
-				break;
+			case CMD_SHOW_ERROR:
+				for (j = i + 1; j < len && commands[j]; j++) ;
+				if (j == len) {
+					*processed = i;
+					return 0;
+				}
+				Message(ICON_ERROR, "Server Error",
+						commands + i + 1, MESSAGE_MSECS);
+				client_process = 0;
+				*processed = j;
+				return 0;
 			case CMD_RESET_POSITION:
 				if (i + COORD_SIZE * 2 + 1 > len) {
 					*processed = i;
@@ -188,7 +198,12 @@ ExcCode client_exec(const char *commands, int len, int *processed,
 				TRY(client_send_confirm());
 				break;
 			#endif
+			
+			case CONN_CHECK:
+				break;
+				
 			default:
+				printf("[%d;%s]\n", buffer[i], buffer + i); //
 				PANIC(ERR_UNSUPPORTED_COMMAND);
 		}
 	}
@@ -250,13 +265,6 @@ ExcCode client_handshake(int client_width, int client_height) {
 	TRY(client_string_send(HEADER));
 	
 	TRY(client_string_send(password));
-	if (read(conn_fd, buffer, 1) != 1)
-		PANIC(ERR_SOCK_TRANSFER);
-	if (buffer[0] == PASSWORD_WRONG) {
-		PANIC(ERR_WRONG_PASSWORD);
-	} else
-	if (buffer[0] != PASSWORD_CORRECT)
-		PANIC(ERR_PROTOCOL);
 	
 	int i = 0;
 	WRITE_COORD(client_width, buffer, i);

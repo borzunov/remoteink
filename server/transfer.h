@@ -2,6 +2,8 @@
 #define TRANSFER_H
 
 
+extern ExcCode transfer_send_error(int conn_fd, const char *message);
+
 extern ExcCode transfer_recv_string(int conn_fd, const char **res);
 
 extern ExcCode transfer_image_send_all(

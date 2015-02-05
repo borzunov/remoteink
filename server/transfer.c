@@ -5,6 +5,7 @@
 #include "profiler.h"
 #include "transfer.h"
 
+#include <string.h>
 #include <unistd.h>
 
 #define MAX_SCREEN_SIDE 2048
@@ -31,6 +32,12 @@ ExcCode send_buffer(int conn_fd, int len) {
 		PANIC(ERR_SOCK_TRANSFER);
 		
 	profiler_finish(STAGE_TRANSFER);
+	return 0;
+}
+
+ExcCode transfer_send_error(int conn_fd, const char *message) {
+	snprintf(buffer, MAX_SENT_DATA_SIZE, "%c%s", CMD_SHOW_ERROR, message);
+	TRY(send_buffer(conn_fd, strlen(buffer) + 1));
 	return 0;
 }
 

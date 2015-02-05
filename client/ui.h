@@ -68,4 +68,7 @@ struct UIControl *ui_button_create(
 );
 
 
+#define MESSAGE_MSECS 1000
+
+
 #endif

@@ -14,8 +14,6 @@ enum Stage {STAGE_INTRO, STAGE_MONITOR};
 
 enum Stage stage = STAGE_INTRO;
 
-#define MESSAGE_MSECS 1000
-
 ifont *font_title, *font_label, *font_caption;
 int font_caption_offset;
 #define LINE_SPACING 3

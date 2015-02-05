@@ -108,15 +108,23 @@ ExcCode transfer_image_send_diff(
 			unsigned next_pixel = next_image[y * client_width + x];
 			if (prev_pixel != next_pixel) {
 				if (skipped_before) {
-					buffer[i++] = CMD_SKIP;
-					WRITE_COUNT(skipped_before, buffer, i);
+					*(unsigned *) (buffer + i) =
+							CMD_SKIP | (skipped_before << 8);
+					i += 4;
+					/*buffer[i++] = CMD_SKIP;
+					WRITE_COUNT(skipped_before, buffer, i);*/
+					
 					skipped_before = 0;
 					
 					traffic_diffs += 4;
 				}
 				if (next_pixel != color) {
-					buffer[i++] = CMD_PUT_COLOR;
-					WRITE_COLOR(next_pixel, buffer, i);
+					*(unsigned *) (buffer + i) =
+							CMD_PUT_COLOR | (next_pixel << 8);
+					i += 4;
+					/*buffer[i++] = CMD_PUT_COLOR;
+					WRITE_COLOR(next_pixel, buffer, i);*/
+					
 					color = next_pixel;
 					is_repeat_before = 0;
 					
@@ -125,10 +133,14 @@ ExcCode transfer_image_send_diff(
 				if (is_repeat_before) {
 					// count++ in previos CMD_PUT_REPEAT
 					(*(unsigned *) (buffer + i - COUNT_SIZE))++;
+					
 					is_repeat_before = 1;
 				} else {
-					buffer[i++] = CMD_PUT_REPEAT;
-					WRITE_COUNT(1, buffer, i);
+					*(unsigned *) (buffer + i) = CMD_PUT_REPEAT | (1 << 8);
+					i += 4;
+					/*buffer[i++] = CMD_PUT_REPEAT;
+					WRITE_COUNT(1, buffer, i);*/
+					
 					is_repeat_before = 1;
 					
 					traffic_diffs += 4;

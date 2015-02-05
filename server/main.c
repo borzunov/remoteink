@@ -329,6 +329,9 @@ void *handle_shortcuts(void *arg) {
 xcb_connection_t *display;
 pthread_t shortcuts_thread;
 
+#define ERR_SCREEN_DEPTH "Your screen has %d-bit color depth, " \
+		"but only 24-bit depth is supported yet"
+
 ExcCode server_create() {	
 	int default_screen_no;
 	display = xcb_connect(NULL, &default_screen_no);
@@ -340,6 +343,10 @@ ExcCode server_create() {
 	int screen_height = screen->height_in_pixels;
 	xcb_window_t root = screen->root;
 	control_screen_dimensions_set(screen_width, screen_height);
+	
+	int depth = screen->root_depth;
+	if (depth != 24)
+		PANIC(ERR_SCREEN_DEPTH, depth);
 	
 	TRY(screen_init(display, screen, root));
 	TRY(shortcuts_init(display, screen, root));
@@ -531,7 +538,7 @@ ExcCode daemon_main() {
 	push_defer(server_destroy);
 	
 	TRY_WITH_DEFER(server_setup());
-	syslog(LOG_INFO, "Listen on %s:%d", server_host, server_port);
+	syslog(LOG_INFO, "Server listens on %s:%d", server_host, server_port);
 	while (state == STATE_LISTEN || state == STATE_HANDLE_CLIENT) {		
 		struct sockaddr_in client_addr;
 		socklen_t client_len = sizeof (struct sockaddr_in);

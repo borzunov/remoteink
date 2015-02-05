@@ -111,6 +111,16 @@ ExcCode image_resize(Imlib_Image *image, int dest_width, int dest_height) {
 	return 0;
 }
 
+ExcCode image_invert_colors(Imlib_Image image) {
+	imlib_context_set_image(image);
+	unsigned *data = imlib_image_get_data();
+	int data_length = imlib_image_get_width() * imlib_image_get_height();
+	for (int i = 0; i < data_length; i++)
+		data[i] = 0xffffff - data[i];
+	imlib_image_put_back_data(data);
+	return 0;
+}
+
 #define LABEL_SHOW_TIME_NSEC (2 * (NSECS_PER_SEC))
 
 #define LABEL_BOX_MARGIN 25
@@ -148,7 +158,7 @@ ExcCode image_turn_to_data(Imlib_Image image, unsigned **res) {
 	// Note: *res will be set to pointer to a buffer that contains image
 	//       pixels encoded as RGBX. This pointer should be freed by caller.
 	imlib_context_set_image(image);
-	int data_size = imlib_image_get_width() * imlib_image_get_height() *
+	size_t data_size = imlib_image_get_width() * imlib_image_get_height() *
 			sizeof (unsigned);
 	*res = malloc(data_size);
 	if (*res == NULL)
@@ -182,6 +192,8 @@ ExcCode get_screenshot_data(unsigned **image_data,
 			&image));
 	TRY(image_expand(&image, context->frame_width, context->frame_height));
 	TRY(image_resize(&image, client_width, client_height));
+	if (context->colors_inverting_enabled)
+		TRY(image_invert_colors(image));
 	TRY(draw_label(image));
 	TRY(image_turn_to_data(image, image_data));
 	return 0;

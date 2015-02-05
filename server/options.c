@@ -76,6 +76,14 @@ ExcCode load_cursor_capturing_enabled(const char *key, const char *value) {
 	return 0;
 }
 
+int default_colors_inverting_enabled;
+
+ExcCode load_default_colors_inverting_enabled(
+		const char *key, const char *value) {
+	TRY(parse_bool(key, value, &default_colors_inverting_enabled));
+	return 0;
+}
+
 
 int move_step;
 
@@ -140,6 +148,7 @@ const struct HandlerRecord handlers[] = {
 	{"ToggleWindowTracking", toggle_window_tracking_handler},
 	{"AdjustWindowSize", adjust_window_size_handler},
 	{"ToggleCursorCapturing", toggle_cursor_capturing_handler},
+	{"ToggleColorsInverting", toggle_colors_inverting_handler},
 	{NULL, NULL}
 };
 
@@ -203,6 +212,8 @@ const struct IniSection sections[] = {
 		{"WindowsScale", load_default_windows_scale, NULL, 1},
 		{"DesktopScale", load_default_desktop_scale, NULL, 1},
 		{"CursorCapturingEnabled", load_cursor_capturing_enabled, NULL, 1},
+		{"ColorsInvertingEnabled", load_default_colors_inverting_enabled,
+				NULL, 1},
 		{NULL}
 	}},
 	{"Stats", (struct IniParam []) {

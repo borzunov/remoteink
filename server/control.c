@@ -61,6 +61,8 @@ void control_context_select(xcb_window_t window) {
 	reset_scale();
 	control_update_frame();
 	reset_position();
+	active_context->colors_inverting_enabled =
+			default_colors_inverting_enabled;
 }
 
 void apply_scale(double scale) {
@@ -222,4 +224,9 @@ void toggle_cursor_capturing_handler() {
 	snprintf(label_buffer, LABEL_BUFFER_SIZE, "Cursor capturing: %s",
 			cursor_capturing_enabled ? "On" : "Off");
 	control_label_set(label_buffer);
+}
+
+void toggle_colors_inverting_handler() {
+	active_context->colors_inverting_enabled =
+			!active_context->colors_inverting_enabled;
 }

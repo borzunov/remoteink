@@ -5,25 +5,91 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/shm.h>
+#include <syslog.h>
 #include <xcb/xfixes.h>
+#include <xcb/shm.h>
 
 
 xcb_connection_t *display;
 xcb_screen_t *screen;
 xcb_window_t root;
 
-#define ERR_CURSOR "Cursor capturing isn't supported"
+#define ERR_X_EXTENSION "Extension \"%s\" isn't available"
 
-ExcCode screen_cursor_init() {
-	xcb_xfixes_query_version_cookie_t cookie =
-			xcb_xfixes_query_version(display,
-			XCB_XFIXES_MAJOR_VERSION, XCB_XFIXES_MINOR_VERSION);
-	xcb_xfixes_query_version_reply_t *reply =
-			xcb_xfixes_query_version_reply(display, cookie, NULL);
-	if (reply == NULL)
-		PANIC(ERR_CURSOR);
+#define ERR_SHM_ALLOC "Failed to allocate shared memory"
+#define ERR_SHM_ATTACH "Failed to attach shared memory"
+
+#define MIT_SHM_EXTENSION_NAME "MIT-SHM"
+
+uint32_t shmid;
+uint8_t *shmaddr;
+xcb_shm_seg_t shmseg;
+
+ExcCode screen_shm_init() {
+	xcb_query_extension_cookie_t extension_cookie =
+			xcb_query_extension(display,
+			strlen(MIT_SHM_EXTENSION_NAME), MIT_SHM_EXTENSION_NAME);
+	xcb_query_extension_reply_t *extension_reply =
+			xcb_query_extension_reply(display, extension_cookie, NULL);
+	if (extension_reply == NULL)
+		PANIC(ERR_X_EXTENSION, MIT_SHM_EXTENSION_NAME);
+	free(extension_reply);
+	xcb_shm_query_version_cookie_t version_cookie =
+			xcb_shm_query_version(display);
+	xcb_shm_query_version_reply_t *version_reply =
+			xcb_shm_query_version_reply(display, version_cookie, NULL);
+	if (version_reply == NULL)
+		PANIC(ERR_X_EXTENSION, MIT_SHM_EXTENSION_NAME);
+	free(version_reply);
+	
+	size_t max_size = screen->width_in_pixels * screen->height_in_pixels *
+			sizeof (unsigned);
+	shmid = shmget(IPC_PRIVATE, max_size, IPC_CREAT | 0777);
+	if (shmid < 0)
+		PANIC(ERR_SHM_ALLOC);		
+	shmaddr = shmat(shmid, 0, 0);
+	if (shmaddr == (uint8_t *) -1)
+		PANIC(ERR_SHM_ATTACH);
+					
+	shmseg = xcb_generate_id(display);
+	xcb_void_cookie_t attach_cookie = xcb_shm_attach_checked(display,
+			shmseg, shmid, 0);
+	if (xcb_request_check(display, attach_cookie) != NULL)
+		PANIC(ERR_SHM_ATTACH);
 	return 0;
 }
+
+void screen_shm_free() {
+	xcb_shm_detach_checked(display, shmseg);
+	
+	shmdt(shmaddr);
+}
+
+#define XFIXES_EXTENSION_NAME "XFIXES"
+
+ExcCode screen_cursor_init() {
+	xcb_query_extension_cookie_t extension_cookie =
+			xcb_query_extension(display,
+			strlen(XFIXES_EXTENSION_NAME), XFIXES_EXTENSION_NAME);
+	xcb_query_extension_reply_t *extension_reply =
+			xcb_query_extension_reply(display, extension_cookie, NULL);
+	if (extension_reply == NULL)
+		PANIC(ERR_X_EXTENSION, XFIXES_EXTENSION_NAME);
+	free(extension_reply);
+	xcb_xfixes_query_version_cookie_t version_cookie =
+			xcb_xfixes_query_version(display,
+			XCB_XFIXES_MAJOR_VERSION, XCB_XFIXES_MINOR_VERSION);
+	xcb_xfixes_query_version_reply_t *version_reply =
+			xcb_xfixes_query_version_reply(display, version_cookie, NULL);
+	if (version_reply == NULL)
+		PANIC(ERR_X_EXTENSION, XFIXES_EXTENSION_NAME);
+	free(version_reply);
+	return 0;
+}
+
+int shm_available = 0;
+int cursor_available = 0;
 
 ExcCode screen_init(xcb_connection_t *cur_display,
 		xcb_screen_t *cur_screen, xcb_window_t cur_root) {
@@ -31,8 +97,20 @@ ExcCode screen_init(xcb_connection_t *cur_display,
 	screen = cur_screen;
 	root = cur_root;
 	
-	screen_cursor_init();
+	if (!screen_shm_init())
+		shm_available = 1;
+	else
+		syslog(LOG_NOTICE, "%s", exc_message);
+	if (!screen_cursor_init())
+		cursor_available = 1;
+	else
+		syslog(LOG_NOTICE, "%s", exc_message);
 	return 0;
+}
+
+void screen_free() {
+	if (shm_available)
+		screen_shm_free();
 }
 
 ExcCode screen_cursor_blend(int x, int y, Imlib_Image image) {
@@ -77,19 +155,35 @@ ExcCode screen_shot(int x, int y, int width, int height,
 	width = x1 - x;
 	height = y1 - y;
 	
-	xcb_get_image_cookie_t cookie = xcb_get_image(display,
-			XCB_IMAGE_FORMAT_Z_PIXMAP, root, x, y, width, height,
-			XCB_ALL_PLANES);
-	xcb_get_image_reply_t *reply = xcb_get_image_reply(display, cookie, NULL);
-	if (reply == NULL)
-		PANIC(ERR_X_REQUEST);
-	*res = imlib_create_image_using_copied_data(width, height,
-			(unsigned *) xcb_get_image_data(reply));
-	free(reply);
+	if (shm_available) {
+		xcb_shm_get_image_cookie_t cookie =
+				xcb_shm_get_image(display,
+				root, x, y, width, height,
+				XCB_ALL_PLANES, XCB_IMAGE_FORMAT_Z_PIXMAP,
+				shmseg, 0);
+		xcb_shm_get_image_reply_t *reply =
+				xcb_shm_get_image_reply(display, cookie, NULL);
+		if (reply == NULL)
+			PANIC(ERR_X_REQUEST);
+		*res = imlib_create_image_using_copied_data(width, height,
+				(unsigned *) shmaddr);
+		free(reply);
+	} else {
+		xcb_get_image_cookie_t cookie = xcb_get_image(display,
+				XCB_IMAGE_FORMAT_Z_PIXMAP, root, x, y, width, height,
+				XCB_ALL_PLANES);
+		xcb_get_image_reply_t *reply =
+				xcb_get_image_reply(display, cookie, NULL);
+		if (reply == NULL)
+			PANIC(ERR_X_REQUEST);
+		*res = imlib_create_image_using_copied_data(width, height,
+				(unsigned *) xcb_get_image_data(reply));
+		free(reply);
+	}
 	if (*res == NULL)
 		PANIC(ERR_IMAGE);
 		
-	if (cursor_capturing_enabled)
+	if (cursor_capturing_enabled && cursor_available)
 		screen_cursor_blend(x, y, *res);
 	return 0;
 }

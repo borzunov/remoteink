@@ -331,9 +331,9 @@ ExcCode server_create() {
 		PANIC(ERR_FONT, label_font_name);
 	imlib_context_set_font(label_font);
 	
-	int shortcuts_res;
 	if (pthread_mutex_init(&control_lock, NULL))
 		PANIC(ERR_MUTEX_INIT);
+	int shortcuts_res;	
 	if (pthread_create(&shortcuts_thread, NULL,
 			handle_shortcuts, &shortcuts_res))
 		PANIC(ERR_THREAD_CREATE);
@@ -345,17 +345,20 @@ ExcCode server_create() {
 }
 
 void server_destroy() {
-	xcb_disconnect(display);
+	close(serv_fd);
 	
-	shortcuts_free();
+	shortcuts_handle_stop();
 	
 	imlib_free_font();
 	
-	shortcuts_handle_stop();
+	shortcuts_free();
+	screen_free();
+	
+	xcb_disconnect(display);
+	
 	pthread_join(shortcuts_thread, NULL);
 	pthread_mutex_destroy(&control_lock);
 	
-	close(serv_fd);
 	if (has_stats && stats_enabled) {
 		if (profiler_save(stats_filename))
 			syslog(LOG_ERR, "%s", exc_message);

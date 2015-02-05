@@ -9,6 +9,8 @@
 
 extern ExcCode screen_init(xcb_connection_t *cur_display,
 		xcb_screen_t *cur_screen, xcb_window_t cur_root);
+extern void screen_free();
+
 extern ExcCode screen_shot(int x, int y, int width, int height,
 		Imlib_Image *res);
 

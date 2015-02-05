@@ -4,7 +4,6 @@ OBJECTS=$(addprefix $(OBJDIR)/, $(addsuffix .o, $(notdir $(SOURCES))))
 BINDIR=bin
 EXECUTABLE=$(BINDIR)/inkmonitord
 
-EXECUTABLE_PASSWD=inkmonitord-passwd
 CONFIG=config.ini
 
 CC=gcc
@@ -45,14 +44,12 @@ INSTALL=install
 INSTALLDATA=install -m 644
 
 .PHONY: install
-install: all inkmonitord-passwd config.ini
+install: all $(CONFIG)
 	$(INSTALL) $(EXECUTABLE) $(INSTALL_DIR)/bin/inkmonitord
-	$(INSTALL) $(EXECUTABLE_PASSWD) $(INSTALL_DIR)/bin/inkmonitord-passwd
 	mkdir -p /etc/inkmonitord
 	$(INSTALLDATA) $(CONFIG) /etc/inkmonitord/config.ini
 
 .PHONY: uninstall
 uninstall:
 	rm -f $(INSTALL_DIR)/bin/inkmonitord
-	rm -f $(INSTALL_DIR)/bin/inkmonitord-passwd
 	rm -rf /etc/inkmonitord

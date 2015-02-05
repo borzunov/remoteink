@@ -751,6 +751,10 @@ ExcCode perform_action(int argc, char *argv[]) {
 		printf("[+] " DAEMON_NAME " (PID %d) "
 				"asked to close the current connection\n", pid);
 	} else
+	if (!strcmp(action, "passwd")) {
+		TRY(security_change_password(password_filename));
+		printf("[+] Password updated (restart the daemon to apply changes)\n");
+	} else
 		PANIC(ERR_ACTION_UNKNOWN, action);
 	return 0;
 }

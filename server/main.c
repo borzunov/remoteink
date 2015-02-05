@@ -356,7 +356,7 @@ void server_destroy() {
 	
 	xcb_disconnect(display);
 	
-	pthread_join(shortcuts_thread, NULL);
+	pthread_cancel(shortcuts_thread);
 	pthread_mutex_destroy(&control_lock);
 	
 	if (has_stats && stats_enabled) {
@@ -437,34 +437,34 @@ ExcCode server_handle_client(const struct sockaddr_in *client_addr) {
 
 
 void fatal_handler(int code) {
-	syslog(LOG_NOTICE, "Caught signal \"%s\", shutting down", strsignal(code));
-	
 	pop_all_defers();
+	
+	syslog(LOG_NOTICE, "Caught signal \"%s\", shutted down", strsignal(code));
 	exit(EXIT_SUCCESS);
 }
 
 void term_handler(int code) {
-	syslog(LOG_INFO, "Server shutted down");
-	
 	pop_all_defers();
+	
+	syslog(LOG_INFO, "Server shutted down");
 	exit(EXIT_SUCCESS);
 }
 
 void kick_handler(int code) {
 	if (state == STATE_HANDLE_CLIENT) {
-		syslog(LOG_ERR, "Client has kicked");
-		
 		state = STATE_LISTEN;
 		close(conn_fd);
+		
+		syslog(LOG_ERR, "Client has kicked");
 	}
 }
 
 void broken_pipe_handler(int code) {
 	if (state == STATE_HANDLE_CLIENT) {
-		syslog(LOG_ERR, ERR_SOCK_TRANSFER);
-	
 		state = STATE_LISTEN;
 		close(conn_fd);
+		
+		syslog(LOG_ERR, ERR_SOCK_TRANSFER);
 	}
 }
 

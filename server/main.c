@@ -452,10 +452,10 @@ ExcCode server_handle_client(const struct sockaddr_in *client_addr) {
 		long long frame_duration = get_time_nsec() - frame_start_time;
 		long long sleep_time = NSECS_PER_SEC / max_fps - frame_duration;
 		if (sleep_time > 0)
-			usleep(sleep_time / NSECS_PER_MSEC);
+			usleep(sleep_time / NSECS_PER_USEC);
 		else
 		if (stats_enabled && sleep_time < 0)
-			syslog(LOG_DEBUG, "Too slow! Frame duration is %lld ms.",
+			syslog(LOG_DEBUG, "Too slow! Frame duration is %lld ms",
 					frame_duration / NSECS_PER_MSEC);
 	}
 	syslog(LOG_INFO, "Client disconnected");

@@ -2,8 +2,9 @@
 #define PROFILER_H
 
 
+#define NSECS_PER_USEC 1000LL
 #define NSECS_PER_MSEC (1000LL * 1000)
-#define NSECS_PER_SEC ((NSECS_PER_MSEC) * 1000)
+#define NSECS_PER_SEC  (1000LL * 1000 * 1000)
 
 long long get_time_nsec();
 

@@ -100,17 +100,12 @@ ExcCode load_scale_factor(const char *key, const char *value) {
 }
 
 
-ExcCode load_font_path(const char *key, const char *value) {
-	imlib_add_path_to_font_path(value);
-	return 0;
-}
+#define FONT_PATTERN_REPR_SIZE 256
+char font_pattern_repr[FONT_PATTERN_REPR_SIZE];
 
-#define LABEL_FONT_NAME_SIZE 256
-char label_font_name[LABEL_FONT_NAME_SIZE];
-
-ExcCode load_label_font_name(const char *key, const char *value) {
-	strncpy(label_font_name, value, LABEL_FONT_NAME_SIZE - 1);
-	server_host[LABEL_FONT_NAME_SIZE - 1] = '\0';
+ExcCode load_font_pattern_repr(const char *key, const char *value) {
+	strncpy(font_pattern_repr, value, FONT_PATTERN_REPR_SIZE - 1);
+	server_host[FONT_PATTERN_REPR_SIZE - 1] = '\0';
 	return 0;
 }
 
@@ -202,9 +197,8 @@ const struct IniSection sections[] = {
 		{"ScaleFactor", load_scale_factor, NULL, 1},
 		{NULL}
 	}},
-	{"Fonts", (struct IniParam []) {
-		{"Path", load_font_path, NULL, 1},
-		{"LabelFont", load_label_font_name, NULL, 1},
+	{"Font", (struct IniParam []) {
+		{"Pattern", load_font_pattern_repr, NULL, 1},
 		{NULL}
 	}},
 	{"Defaults", (struct IniParam []) {

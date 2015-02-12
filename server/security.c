@@ -12,7 +12,7 @@
 char expected_hash[EXPECTED_HASH_SIZE];
 
 #define ERR_PASSWORD_UNDEFINED "Can't read password's hash (define " \
-		"password using \"inkmonitord-passwd\" or try to use \"sudo\")"
+		"password using \"inkmonitord passwd\" or try to use \"sudo\")"
 
 FILE *f;
 

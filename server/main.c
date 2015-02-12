@@ -12,6 +12,7 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <fontconfig/fontconfig.h>
 #include <errno.h>
 #include <libgen.h>
 #include <netdb.h>
@@ -326,6 +327,67 @@ void *handle_shortcuts(void *arg) {
 	return NULL;
 }
 
+FcPattern *font_pattern = 0;
+FcPattern *font_match = 0;
+FcChar8 *font_dirname = 0;
+FcChar8 *font_basename = 0;
+
+void remove_extension(char *filename) {
+	for (int i = strlen(filename) - 1; i != -1; i--)
+		if (filename[i] == '.') {
+			filename[i] = 0;
+			return;
+		}
+}
+
+void defer_for_load_fonts() {
+	if (font_pattern)
+		FcPatternDestroy(font_pattern);
+	if (font_match)
+		FcPatternDestroy(font_match);
+	if (font_dirname)
+		FcStrFree(font_dirname);
+	if (font_basename)
+		FcStrFree(font_basename);
+}
+
+#define FONT_IMLIB_REPR_SIZE 256
+char font_imlib_repr[FONT_IMLIB_REPR_SIZE];
+
+ExcCode load_fonts() {
+	push_defer(defer_for_load_fonts);
+	
+	if (FcInit() == FcFalse)
+		PANIC_WITH_DEFER(ERR_FONT, font_pattern_repr);
+	font_pattern = FcNameParse((const FcChar8 *) font_pattern_repr);
+	if (FcConfigSubstitute(0, font_pattern, FcMatchPattern) == FcFalse)
+		PANIC_WITH_DEFER(ERR_FONT, font_pattern_repr);
+	FcDefaultSubstitute(font_pattern);
+	FcResult result;
+	font_match = FcFontMatch(0, font_pattern, &result);
+	
+	FcChar8 *filename;
+	if (FcPatternGetString(font_match, FC_FILE, 0, &filename) != FcResultMatch)
+		PANIC_WITH_DEFER(ERR_FONT, font_pattern_repr);
+	font_dirname = FcStrDirname(filename);
+	font_basename = FcStrBasename(filename);
+	double size;
+	if (FcPatternGetDouble(font_match, FC_SIZE, 0, &size) != FcResultMatch)
+		PANIC_WITH_DEFER(ERR_FONT, font_pattern_repr);
+	
+	imlib_add_path_to_font_path((char *) font_dirname);
+	remove_extension((char *) font_basename);
+	snprintf(font_imlib_repr, FONT_IMLIB_REPR_SIZE, "%s/%.0lf",
+			(char *) font_basename, size);
+	Imlib_Font label_font = imlib_load_font(font_imlib_repr);
+	if (label_font == NULL)
+		PANIC_WITH_DEFER(ERR_FONT, font_pattern_repr);
+	imlib_context_set_font(label_font);
+	
+	pop_defer(defer_for_load_fonts);
+	return 0;
+}
+
 xcb_connection_t *display;
 pthread_t shortcuts_thread;
 
@@ -355,10 +417,7 @@ ExcCode server_create() {
 	syslog(LOG_DEBUG,
 			"Monitor resolution: %dx%d", screen_width, screen_height);
 	
-	Imlib_Font label_font = imlib_load_font(label_font_name);
-	if (label_font == NULL)
-		PANIC(ERR_FONT, label_font_name);
-	imlib_context_set_font(label_font);
+	load_fonts();
 	
 	if (pthread_mutex_init(&control_lock, NULL))
 		PANIC(ERR_MUTEX_INIT);

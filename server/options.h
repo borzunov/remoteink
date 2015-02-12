@@ -20,7 +20,7 @@ extern int default_colors_inverting_enabled;
 extern int move_step;
 extern double scale_factor;
 
-extern char label_font_name[];
+extern char font_pattern_repr[];
 
 extern int stats_enabled;
 extern char stats_filename[];

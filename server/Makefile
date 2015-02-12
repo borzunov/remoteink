@@ -9,7 +9,7 @@ CONFIG=config.ini
 CC=gcc
 CFLAGS=-std=gnu99 -pedantic -Wall -Wshadow -O3
 LDFLAGS=
-LIBS=-lcrypt -lImlib2 -lm -lpthread -lrt -lX11 -lxcb -lxcb-keysyms -lxcb-shm -lxcb-xfixes
+LIBS=-lcrypt -lfontconfig -lImlib2 -lm -lpthread -lrt -lX11 -lxcb -lxcb-keysyms -lxcb-shm -lxcb-xfixes
 
 .PHONY: all
 all: $(EXECUTABLE)

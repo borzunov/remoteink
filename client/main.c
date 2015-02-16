@@ -186,10 +186,10 @@ void add_field(const char *label_caption, const char *text,
 }
 
 #define AGREEMENT_CONTENT \
-		"This program is experimental. Reader's screen is not intended " \
+		"This program is experimental. Reader's screens are not intended " \
 		"to update so frequently, so using the program can lead " \
 		"to malfunction of the screen or reduce its lifetime. Developer " \
-		"of the program are not responsible for possible damage to your " \
+		"of the program is not responsible for possible damage to your " \
 		"device."
 
 void agreement_accept_handler(int button) {

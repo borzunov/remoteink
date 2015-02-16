@@ -622,7 +622,7 @@ ExcCode daemon_main() {
 #define ERR_LOCK_ISNT_RUNNING "The daemon isn't running"
 #define ERR_LOCK_DEFUNCT "Lock file \"%s\" has been detected. It appears "\
 		"it's owned by the process with PID %d, which is now defunct. "\
-		"Delete the lock file and try again."
+		"Delete the lock file (you should run \"sudo rm %s\") and try again."
 #define ERR_LOCK_ACQUIRE "Failed to acquire exclusive lock on lock file \"%s\""
 
 #define ERR_DAEMON_START "Failed to start daemon"
@@ -685,7 +685,8 @@ ExcCode run_daemon() {
 			case SEND_INCORRECT_LOCK_FILE_CONTENT:
 				PANIC(ERR_LOCK_FILE_CONTENT, lock_filename);
 			case SEND_DEFUNCT:
-				PANIC(ERR_LOCK_DEFUNCT, lock_filename, lock_pid);
+				PANIC(ERR_LOCK_DEFUNCT,
+						lock_filename, lock_pid, lock_filename);
 			case SEND_FAIL_SEND_SIGNAL:
 				PANIC(ERR_PROCESS_CHECK, lock_pid);
 			case SEND_OK:
@@ -771,7 +772,7 @@ ExcCode send_action_to_daemon(int signal_code, pid_t *lock_pid) {
 		case SEND_INCORRECT_LOCK_FILE_CONTENT:
 			PANIC(ERR_LOCK_FILE_CONTENT, lock_filename);
 		case SEND_DEFUNCT:
-			PANIC(ERR_LOCK_DEFUNCT, lock_filename, *lock_pid);
+			PANIC(ERR_LOCK_DEFUNCT, lock_filename, *lock_pid, lock_filename);
 		case SEND_FAIL_SEND_SIGNAL:
 			PANIC(ERR_SIGNAL_SEND, *lock_pid);
 		default:
@@ -787,7 +788,7 @@ ExcCode check_whether_daemon_running(int *res, pid_t *lock_pid) {
 		case SEND_INCORRECT_LOCK_FILE_CONTENT:
 			PANIC(ERR_LOCK_FILE_CONTENT, lock_filename);
 		case SEND_DEFUNCT:
-			PANIC(ERR_LOCK_DEFUNCT, lock_filename, *lock_pid);
+			PANIC(ERR_LOCK_DEFUNCT, lock_filename, *lock_pid, lock_filename);
 		case SEND_FAIL_SEND_SIGNAL:
 			PANIC(ERR_PROCESS_CHECK, *lock_pid);
 		default:

@@ -2,7 +2,7 @@ SOURCES=../common/exceptions.c ../common/ini_parser.c ../common/utils.c control.
 OBJDIR=obj
 OBJECTS=$(addprefix $(OBJDIR)/, $(addsuffix .o, $(notdir $(SOURCES))))
 BINDIR=bin
-EXECUTABLE=$(BINDIR)/inkmonitord
+EXECUTABLE=$(BINDIR)/remoteinkd
 
 CONFIG=config.ini
 
@@ -45,11 +45,11 @@ INSTALLDATA=install -m 644
 
 .PHONY: install
 install: all $(CONFIG)
-	$(INSTALL) $(EXECUTABLE) $(INSTALL_DIR)/bin/inkmonitord
-	mkdir -p /etc/inkmonitord
-	$(INSTALLDATA) $(CONFIG) /etc/inkmonitord/config.ini
+	$(INSTALL) $(EXECUTABLE) $(INSTALL_DIR)/bin/remoteinkd
+	mkdir -p /etc/remoteinkd
+	$(INSTALLDATA) $(CONFIG) /etc/remoteinkd/config.ini
 
 .PHONY: uninstall
 uninstall:
-	rm -f $(INSTALL_DIR)/bin/inkmonitord
-	rm -rf /etc/inkmonitord
+	rm -f $(INSTALL_DIR)/bin/remoteinkd
+	rm -rf /etc/remoteinkd

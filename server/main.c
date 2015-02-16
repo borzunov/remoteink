@@ -28,7 +28,9 @@
 #include <unistd.h>
 
 
-#define DAEMON_NAME "inkmonitord"
+#define TEXT_TITLE "RemoteInk v0.2"
+
+#define DAEMON_NAME "remoteinkd"
 
 const char *config_filename = "/etc/" DAEMON_NAME "/config.ini";
 const char *password_filename = "/etc/" DAEMON_NAME "/passwd";
@@ -802,7 +804,7 @@ ExcCode check_whether_daemon_running(int *res, pid_t *lock_pid) {
 #define ERR_ACTION_UNKNOWN "Unknown action \"%s\" (see --help)"
 
 ExcCode perform_action(int argc, char *argv[]) {
-	printf("InkMonitor v0.02 - Server\n");
+	printf(TEXT_TITLE " - Server\n");
 	
 	if (argc < 2)
 		PANIC(ERR_ACTION_UNSPECIFIED);

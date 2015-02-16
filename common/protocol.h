@@ -36,7 +36,7 @@
  *      by the client.
  */
 
-#define HEADER "InkMonitor-0.02"
+#define HEADER "RemoteInk-0.2"
 
 #define CMD_SHOW_ERROR        'E' // SHOW_ERROR(message)
 

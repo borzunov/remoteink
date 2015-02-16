@@ -5,7 +5,9 @@
 #include "options.h"
 #include "ui.h"
 
-#define TEXT_TITLE "InkMonitor v0.02"
+#define TEXT_TITLE "RemoteInk v0.2"
+
+#define CONFIG_BASENAME "remoteink.ini"
 
 #define CONFIG_FILENAME_SIZE 256
 char config_filename[CONFIG_FILENAME_SIZE];
@@ -303,7 +305,7 @@ void stop_monitor_handler() {
 int main_handler(int type, int par1, int par2) {
 	switch (type) {
 		case EVT_INIT:
-			get_default_config_path("inkmonitor.ini",
+			get_default_config_path(CONFIG_BASENAME,
 					config_filename, CONFIG_FILENAME_SIZE);
 			options_config_load(config_filename);
 			

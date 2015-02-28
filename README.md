@@ -9,7 +9,7 @@ Purposes
 RemoteInk is an experimental application designed:
 * For people whose eyes are straining when they use typical monitors
 * For people who like to read using E-Ink, but don't want to upload texts to the reader every time
-* For reading books, articles and web pages, writing texts, programming etc.
+* For reading books, articles and web pages, writing texts, programming, etc.
 * For people who don't really need color monitor and who can accept low monitor reaction time
 * For people who want to exploit all reader's screen advantages, but faced hardware and software restrictions of the reader
 
@@ -52,7 +52,7 @@ Installation
 
 1. Install required dependencies:
 
-	* *Debian* and its derivatives (*Ubuntu*, *Linux Mint* etc.):
+	* *Debian* and its derivatives (*Ubuntu*, *Linux Mint*, etc.):
 
 			$ sudo apt-get install git build-essential libfontconfig1-dev libimlib2-dev libxcb1-dev libX11-dev libxcb-keysyms1-dev libxcb-shm-dev libxcb-xfixes0-dev fonts-freefont-ttf
 
@@ -244,22 +244,9 @@ It is possible on machines with weak processors (including Raspberry Pi). Try to
 Alternatives
 ------------
 
-* You can prefer VNC client for Pocketbook by *othb08me09zp*. It uses well-known protocol, but may be less convenient for managing windows during daily work.
+* You can prefer VNC client for Pocketbook created by *othb08me09zp* (and slightly modified by me). It uses well-known protocol, but may be less convenient for managing windows during daily work.
 
-	[Download](https://yadi.sk/d/IknvOtBZ7srrA) | [Discussion](http://www.the-ebook.org/forum/viewtopic.php?t=21814) (on Russian)
-	
-	To launch the client you need to:
-		
-	1. Install any terminal emulator for the reader (for example, [poterm](http://fedorchenko.net/src/poterm-2.0.1-Pro.zip)).
-		
-	2. Copy files `libvncclient.so` and `vnc.app` to `applications/` folder in the reader's memory.
-		
-	3. Rename `libvncclient.so` to `libvncclient.so.0`.
-	
-	4. Open the terminal on the reader and run the following commands (where `******` is VNC password and `xx.xx.xx.xx` is server's IP address):
-	
-			$ cd /mnt/ext1/applications
-			$ LD_LIBRARY_PATH=. VNC_PASSWORD=****** ./vnc.app xx.xx.xx.xx:1
+	[Download](https://goo.gl/iBnDGZ) | [Discussion](http://www.the-ebook.org/forum/viewtopic.php?t=21814) (on Russian)
 
 What else can be implemented?
 -----------------------------

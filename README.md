@@ -54,7 +54,7 @@ Installation
 
 	* *Debian* and its derivatives (*Ubuntu*, *Linux Mint*, etc.):
 
-			$ sudo apt-get install git build-essential libfontconfig1-dev libimlib2-dev libxcb1-dev libX11-dev libxcb-keysyms1-dev libxcb-shm-dev libxcb-xfixes0-dev fonts-freefont-ttf
+			$ sudo apt-get install git build-essential libfontconfig1-dev libimlib2-dev libxcb1-dev libX11-dev libxcb-keysyms1-dev libxcb-shm0-dev libxcb-xfixes0-dev fonts-freefont-ttf
 
 	* *Fedora*:
 

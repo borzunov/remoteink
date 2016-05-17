@@ -37,7 +37,7 @@
 #define ERR_FONT "Failed to load font \"%s\""
 
 #define ERR_X_CONNECT "Failed to connect to X server"
-#define ERR_X_REQUEST "Error on request to X server"
+#define ERR_X_REQUEST "Error on request to X server in %s"
 
 #define ERR_SIGNAL_CONFIGURE "Failed to configure signal handler"
 

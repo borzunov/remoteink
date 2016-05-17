@@ -316,7 +316,7 @@ ExcCode screen_of_display(xcb_connection_t *c, int screen,
 		}
 		xcb_screen_next(&iter);
 	}
-	PANIC(ERR_X_REQUEST);
+	PANIC(ERR_X_REQUEST, "screen_of_display");
 }
 
 void *handle_shortcuts(void *arg) {

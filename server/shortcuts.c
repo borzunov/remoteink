@@ -25,7 +25,7 @@ ExcCode shortcuts_init(xcb_connection_t *cur_display,
 			
 	key_symbols_table = xcb_key_symbols_alloc(display);
 	if (key_symbols_table == NULL)
-		PANIC(ERR_X_REQUEST);
+		PANIC(ERR_X_REQUEST, "shortcuts_init");
 	return 0;
 }
 
@@ -100,7 +100,7 @@ ExcCode grab_keycode(uint8_t owner_events,
 				owner_events, grab_window,
 				modifiers | submask, keycode, pointer_mode, keyboard_mode);
 		if (xcb_request_check(display, cookie) != NULL)
-			PANIC(ERR_X_REQUEST);
+			PANIC(ERR_X_REQUEST, "grab_keycode");
 		if (!submask)
 			break;
 	}

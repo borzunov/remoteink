@@ -474,7 +474,7 @@ ExcCode server_setup() {
 		PANIC(ERR_SOCK_CONFIG);
 	if (bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)))
 		PANIC(ERR_SOCK_BIND, server_host, server_port);
-	if (listen(serv_fd, 0))
+	if (listen(serv_fd, 5))
 		PANIC(ERR_SOCK_LISTEN, server_host, server_port);
 	return 0;
 }

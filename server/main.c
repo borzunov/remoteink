@@ -316,7 +316,7 @@ ExcCode screen_of_display(xcb_connection_t *c, int screen,
 		}
 		xcb_screen_next(&iter);
 	}
-	PANIC(ERR_X_REQUEST);
+	PANIC(ERR_X_REQUEST, "screen_of_display");
 }
 
 void *handle_shortcuts(void *arg) {
@@ -474,7 +474,7 @@ ExcCode server_setup() {
 		PANIC(ERR_SOCK_CONFIG);
 	if (bind(serv_fd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)))
 		PANIC(ERR_SOCK_BIND, server_host, server_port);
-	if (listen(serv_fd, 0))
+	if (listen(serv_fd, 5))
 		PANIC(ERR_SOCK_LISTEN, server_host, server_port);
 	return 0;
 }

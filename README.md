@@ -246,7 +246,7 @@ Alternatives
 
 * You can prefer VNC client for Pocketbook created by *othb08me09zp* (and slightly modified by me). It uses well-known protocol, but may be less convenient for managing windows during daily work.
 
-	[Download](https://goo.gl/iBnDGZ) | [Discussion](http://www.the-ebook.org/forum/viewtopic.php?t=21814) (on Russian)
+	[Download](https://goo.gl/iBnDGZ) | [Discussion](http://www.the-ebook.org/forum/viewtopic.php?t=21814) (in Russian)
 
 What else can be implemented?
 -----------------------------
@@ -259,4 +259,4 @@ What can be fixed in the current implementation?
 
 * Support different screen depths (only 24-bit depth is supported yet)
 * Use `xcb-damage` (it can reduce CPU usage)
-* In some cases, resources should be released more accurately
+* In some cases, resources should be released more carefully

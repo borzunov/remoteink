@@ -6,12 +6,7 @@ A tool for using PocketBook Pro/Touch E-Ink reader as a computer monitor on Linu
 Purposes
 --------
 
-RemoteInk is an experimental application designed:
-* For people whose eyes are straining when they use typical monitors
-* For people who like to read using E-Ink, but don't want to upload texts to the reader every time
-* For reading books, articles and web pages, writing texts, programming, etc.
-* For people who don't really need color monitor and who can accept low monitor reaction time
-* For people who want to exploit all reader's screen advantages, but faced hardware and software restrictions of the reader
+This application is designed for people who like to use E-Ink displays. It's suitable for tasks where color monitor and high reaction time aren't necessary: reading and writing texts, programming, etc.
 
 <img src="http://habrastorage.org/files/ed8/5de/963/ed85de963ac44b7e930719ab3b54c3a5.jpg" width=650 />
 
@@ -82,7 +77,7 @@ Installation
 
 4. Check shortcuts scheme. Default scheme is designed for keyboards with numpad (see [full description](#default-shortcuts-scheme)). If you don't have numpad or this scheme will be uncomfortable for you, you can change it as described [here](#configuration).
 
-	Note that this shortcuts must not overlap with another system-wide shortcuts.
+	Note that these shortcuts must not overlap with other system-wide shortcuts.
 
 5. Set up a password to the server:
 	
@@ -208,9 +203,13 @@ Note that you should restart the daemon so as to it uses new configuration and p
 Troubleshooting
 ---------------
 
+### Check whether connection is not blocked
+
+A reader's connection can be blocked by a firewall. You should add rule that allows connections to *remoteinkd* (default port is *9312/tcp*) or temporarily disable the firewall.
+
 ### Look up error messages
 
-Error messages can be displayed on starting the daemon or controlling it via terminal (don't forget to use `sudo` during this operations). Some connection errors can be displayed in the client-side.
+Error messages can be displayed during daemon starting and controlling (don't forget to use `sudo` during these operations). Some connection errors can be displayed in the client-side.
 
 Also, at the time of the daemon is running it uses *syslog* to log information and error messages. You can check the log file to find out a reason of occured errors, for example:
 
@@ -221,10 +220,6 @@ Feb 13 19:54:22 hostname <b>remoteinkd: Unknown modifier in shortcut "Ctrk+Alt+K
 </pre>
 
 In this case the daemon informs that one of shortcut's modifiers is incorrect. You should check the correctness of defined shortcuts in the config (actually, there's a typo in a modifier name - *Ctrk* instead of *Ctrl*).
-
-### Check whether connection isn't blocked
-
-If you don't find the error's reason in the logs, the connection can be blocked by a firewall. You should add rule that allows connections to *remoteinkd* (default port is *9312/tcp*) or temporarily disables the firewall.
 
 ### If monitor's color depth is unsupported
 

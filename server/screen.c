@@ -155,6 +155,7 @@ ExcCode screen_shot(int x, int y, int width, int height,
 	width = x1 - x;
 	height = y1 - y;
 	
+	*res = NULL;
 	if (shm_available) {
 		xcb_shm_get_image_cookie_t cookie =
 				xcb_shm_get_image(display,
@@ -163,12 +164,17 @@ ExcCode screen_shot(int x, int y, int width, int height,
 				shmseg, 0);
 		xcb_shm_get_image_reply_t *reply =
 				xcb_shm_get_image_reply(display, cookie, NULL);
-		if (reply == NULL)
-			PANIC(ERR_X_REQUEST, "screen_shot (xcb_shm_get_image_reply)");
-		*res = imlib_create_image_using_copied_data(width, height,
-				(unsigned *) shmaddr);
-		free(reply);
-	} else {
+		if (reply != NULL) {
+			*res = imlib_create_image_using_copied_data(width, height,
+					(unsigned *) shmaddr);
+			free(reply);
+		}
+	}
+	if (*res == NULL) {
+		// If shm can't be used due to lack of the libraries or
+		// because we connect to X11 on another machine (e.g. via SSH),
+		// try to get an image via sockets.
+
 		xcb_get_image_cookie_t cookie = xcb_get_image(display,
 				XCB_IMAGE_FORMAT_Z_PIXMAP, root, x, y, width, height,
 				XCB_ALL_PLANES);

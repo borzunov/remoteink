@@ -49,11 +49,11 @@ Installation
 
 	* *Debian* and its derivatives (*Ubuntu*, *Linux Mint*, etc.):
 
-			$ sudo apt-get install git build-essential libfontconfig1-dev libimlib2-dev libxcb1-dev libX11-dev libxcb-keysyms1-dev libxcb-shm0-dev libxcb-xfixes0-dev fonts-freefont-ttf
+			$ sudo apt-get install git build-essential libfontconfig1-dev libimlib2-dev libxcb1-dev libx11-dev libxcb-keysyms1-dev libxcb-shm0-dev libxcb-xfixes0-dev fonts-freefont-ttf
 
 	* *Fedora*:
 
-			$ sudo yum install git gcc make imlib2-devel fontconfig-devel libxcb-devel libX11-devel xcb-util-keysyms-devel gnu-free-sans-fonts
+			$ sudo dnf install git gcc make imlib2-devel fontconfig-devel libxcb-devel libX11-devel xcb-util-keysyms-devel gnu-free-sans-fonts
 
 	* *Arch Linux*:
 

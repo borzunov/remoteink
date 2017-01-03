@@ -100,11 +100,11 @@ ExcCode screen_init(xcb_connection_t *cur_display,
 	if (!screen_shm_init())
 		shm_available = 1;
 	else
-		syslog(LOG_NOTICE, "%s", exc_message);
+		syslog(LOG_NOTICE, "Shared memory is not available for screen capture, using sockets instead");
 	if (!screen_cursor_init())
 		cursor_available = 1;
 	else
-		syslog(LOG_NOTICE, "%s", exc_message);
+		syslog(LOG_NOTICE, "Cursor capture is not available, the corresponding setting will have no effect");
 	return 0;
 }
 

@@ -30,15 +30,13 @@ You can:
 
 ### Compatibility
 
-Client application is compatible with readers from *Pocketbook Pro/Touch* series (most of modern *Pocketbook* models with E-Ink screen). Testing was performed on *Pocketbook Touch* and *Touch 2*.
+A client application is compatible with readers from *Pocketbook Pro/Touch* series (most of modern *Pocketbook* models with E-Ink screen). Testing was performed on *Pocketbook Touch* and *Touch 2*.
 
-Server is compatible with computers with *Linux* and *X11* window system.
-
-Of course, list of supported devices and OS may be extended in the future.
+A server is compatible only with computers with *Linux* and *X11* window system.
 
 ### Warning about possible damage
 
-Note that this program is experimental. Readers' screens are not intended to update so frequently, so using the program can lead to malfunction of the screen or reduce its lifetime. Developer of the program is not responsible for possible damage to your device.
+Note that this program is experimental. Readers' screens are not intended to update so frequently, so using the program can lead to malfunction of the screen or reduce its lifetime. The developer of the program is not responsible for possible damage to your device.
 
 Installation
 ------------
@@ -85,9 +83,9 @@ Installation
 
 ### Client
 
-Extract executable file from [this archive](https://github.com/borzunov/remoteink/releases/download/v0.2/remoteink.app.zip) (it's for *v0.2*) and place it into `applications/` folder in your reader's memory (the folder may be hidden on some devices).
+Extract an executable file from [this archive](https://github.com/borzunov/remoteink/releases/download/v0.2/remoteink.app.zip) (it's for *v0.2*) and place it into `applications/` folder in your reader's memory (the folder may be hidden on some devices).
 
-It's not required, but if you want to build the client by yourself, you can install Pocketbook Pro SDK and compile the client using the following commands:
+It is not required, but if you want to build the client by yourself, you can install Pocketbook Pro SDK and compile the client using the following commands:
 
 	$ cd remoteink/client
 	$ make BUILD=arm_gnueabi
@@ -99,7 +97,7 @@ How to use
 
 ### Connection via Wi-Fi
 
-1. Set up a wireless network, connect to it on computer and find out its IP address. If you know corresponding network interface (`wlan0` in this example), it can be done using the following command:
+1. Set up a wireless network, connect to it on the computer and find out its IP address. If you know a corresponding network interface (`wlan0` in this example), it can be done using the following command:
 
 	<pre>
 	$ ifconfig
@@ -135,7 +133,7 @@ How to use
 
 		$ sudo remoteinkd stop
 		
-	Or kick current client (it's also possible to disconnect using "Back" reader's key):
+	Or kick the current client (it's also possible to disconnect using "Back" reader's key):
 	
 		$ sudo remoteinkd kick
 
@@ -147,10 +145,10 @@ Working via USB is implemented using `g_ether.ko` Linux kernel module. It is sup
 
 	<img src="http://habrastorage.org/files/12e/3c2/1ee/12e3c21ee6fd45c5a25f00fb847db858.jpg" height=450 />
 
-2. Connect the reader via USB cable. If the described kernel module is present, a new network interface will appear. Then you can find out its IP address and follow instruction for Wi-Fi network above.
+2. Connect the reader via a USB cable. If the described kernel module is present, a new network interface will appear. Then you can find out its IP address and follow instructions for a Wi-Fi network above.
 
-Advices
--------
+Advice
+------
 
 * Try to disable cursor blinking when editing texts. It may reduce the reader's screen updates count.
 
@@ -173,26 +171,26 @@ There are two modes in the application: when window tracking is enabled and when
 
 `Ctrl`+`Alt`+`Num 5` &ndash; Reset frame relative position to default
 
-Also you can zoom visible image. Scale is stored separately for each window and different modes (default scale for each mode can be changed in the config). Default scale for mode with disabled window tracking is so small that you can see entire desktop. So this mode can be used if you want to switch between windows using mouse, move windows, look on a desktop panels or a system tray.
+Also, you can zoom the visible image. Scale is stored separately for each window and different modes (default scale for each mode can be changed in the config). Default scale for a mode with disabled window tracking is so small that you can see the entire desktop. So this mode can be used if you want to switch between windows using mouse, move windows, look on desktop panels or the system tray.
 
 `Ctrl`+`Alt`+`Num 3`/`9` &ndash; Zoom
 
 `Ctrl`+`Alt`+`Num 1` &ndash; Reset scale to default for this mode
 
-If an opened window doesn't fit into the reader's screen, you can adjust window size to this.
+If an opened window doesn't fit into the reader's screen, you can adjust window size as necessary.
 
 `Ctrl`+`Alt`+`Num 7` &ndash; Adjust window size (if possible)
 
-Some additional opportunities are available. Generally using mouse via slow reader's screen is inconvinient, but there is a cursor capturing mode when the cursor becomes visible and its movement is bounded in the captured frame.
+Some additional opportunities are available. Generally usage of a mouse via the slow reader's screen is inconvinient, but there is a cursor capturing mode when the cursor becomes visible and its movement is bounded in the captured frame.
 
 `Ctrl`+`Alt`+`Num Del` &ndash; Toggle cursor capturing
 
-Also there is opportinity to invert screen colors, but shorcut for it is disabled by default.
+Also, there's an opportinity to invert screen colors, but a shorcut for it is disabled by default.
 
 Configuration
 -------------
 
-Different settings (such as shortcuts scheme, server's port or maximal FPS value) can be changed in `/etc/remoteinkd/config.ini`. The config has comments that help you to understand purpose and format of each option.
+Different settings (such as a shortcuts scheme, server's port or maximal FPS value) can be changed in `/etc/remoteinkd/config.ini`. The config has comments that help you to understand purpose and format of each option.
 
 The password's hash is stored in `/etc/remoteinkd/passwd` and can be changed using command:
 
@@ -205,7 +203,7 @@ Troubleshooting
 
 ### Check whether connection is not blocked
 
-A reader's connection can be blocked by a firewall. You should add rule that allows connections to *remoteinkd* (default port is *9312/tcp*) or temporarily disable the firewall.
+A reader's connection can be blocked by a firewall. You should add a rule that allows connections to *remoteinkd* (default port is *9312/tcp*) or temporarily disable the firewall.
 
 ### Look up error messages
 
@@ -239,19 +237,24 @@ It is possible on machines with weak processors (including Raspberry Pi). Try to
 Alternatives
 ------------
 
-* You can prefer VNC client for Pocketbook created by *othb08me09zp* (and slightly modified by me). It uses well-known protocol, but may be less convenient for managing windows during daily work.
+* You can prefer a VNC client for Pocketbook created by *othb08me09zp* (and slightly modified by me). It uses the well-known cross-platform protocol, but may be less convenient for managing windows during daily work.
 
 	[Download](https://goo.gl/iBnDGZ) | [Discussion](http://www.the-ebook.org/forum/viewtopic.php?t=21814) (in Russian)
 
 What else can be implemented?
 -----------------------------
 
-* Scrolling or pressing mouse keys using reader's touchscreen
-* Client and server can be ported to other platforms
+* Scrolling or pressing mouse keys using a reader's touchscreen
+* The client and the server can be ported to other platforms
 
-What can be fixed in the current implementation?
-------------------------------------------------
+What can be improved in the current implementation?
+---------------------------------------------------
 
-* Support different screen depths (only 24-bit depth is supported yet)
 * Use `xcb-damage` (it can reduce CPU usage)
-* In some cases, resources should be released more carefully
+* Release resources and use sockets more carefully
+* Support different screen depths (only 24-bit depth is supported yet)
+
+Author
+------
+
+Copyright &copy; 2013-2017 Alexander Borzunov

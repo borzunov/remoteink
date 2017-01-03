@@ -39,7 +39,7 @@ const char *lock_filename = "/var/run/" DAEMON_NAME ".pid";
 
 
 void show_version() {
-	printf("Copyright (c) 2013-2015 Alexander Borzunov\n");
+	printf("Copyright (c) 2013-2017 Alexander Borzunov\n");
 }
 
 void show_help(char *filename) {

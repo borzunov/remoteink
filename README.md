@@ -185,7 +185,7 @@ Some additional opportunities are available. Generally usage of a mouse via the 
 
 `Ctrl`+`Alt`+`Num Del` &ndash; Toggle cursor capturing
 
-Also, there's an opportinity to invert screen colors, but a shorcut for it is disabled by default.
+Also, there is an opportunity to invert screen colors, but a shortcut for it is disabled by default.
 
 Configuration
 -------------
@@ -209,7 +209,7 @@ A reader's connection can be blocked by a firewall. You should add a rule that a
 
 Error messages can be displayed during daemon starting and controlling (don't forget to use `sudo` during these operations). Some connection errors can be displayed in the client-side.
 
-Also, at the time of the daemon is running it uses *syslog* to log information and error messages. You can check the log file to find out a reason of occured errors, for example:
+Also, at the time of the daemon is running it uses *syslog* to log information and error messages. You can check the log file to find out a reason of occurred errors, for example:
 
 <pre>
 $ grep remoteinkd /var/log/syslog | tail

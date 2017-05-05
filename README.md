@@ -65,7 +65,7 @@ Installation
 		$ cd remoteink/server
 		$ make
 
-3. Install binaries:
+3. Install binaries and create a config directory:
 
 		$ sudo make install
 
@@ -78,7 +78,7 @@ Installation
 	Note that these shortcuts must not overlap with other system-wide shortcuts.
 
 5. Set up a password to the server:
-	
+
 		$ sudo remoteinkd passwd
 
 ### Client
@@ -126,15 +126,15 @@ How to use
 3. Open *remoteink* application on the reader. Use an interface (it supports control via touchscreen or physical keys) to enter server's IP and password and press "Connect" button. Select your network if you weren't connected to it yet.
 
 	If you don't see monitor contents, go to [Troubleshooting](#troubleshooting).
-	
+
 	<img src="http://habrastorage.org/files/f82/319/cf1/f82319cf16e34813b15e2f461d7e47f0.jpg" height=450 />
 
 4. After work you can stop the daemon:
 
 		$ sudo remoteinkd stop
-		
+
 	Or kick the current client (it's also possible to disconnect using "Back" reader's key):
-	
+
 		$ sudo remoteinkd kick
 
 ### Connection via USB

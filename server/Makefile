@@ -38,7 +38,7 @@ clean:
 	rm -rf $(OBJDIR) $(BINDIR)
 
 
-INSTALL_DIR?=/usr
+INSTALL_DIR?=/usr/local
 
 INSTALL=install
 INSTALLDATA=install -m 644

@@ -6,7 +6,7 @@ A tool for using PocketBook Pro/Touch E-Ink reader as a computer monitor on Linu
 Purposes
 --------
 
-This application is designed for people who like to use E-Ink displays. It's suitable for tasks where color monitor and high reaction time aren't necessary: reading and writing texts, programming, etc.
+This application is designed for people who like to use E-Ink displays. It's suitable for tasks where a color monitor and high reaction time aren't necessary: reading and writing texts, programming, etc.
 
 <img src="http://habrastorage.org/files/ed8/5de/963/ed85de963ac44b7e930719ab3b54c3a5.jpg" width=650 />
 
@@ -19,7 +19,7 @@ You can:
 * Configure connection parameters in UI on the reader
 * Change the reader's screen orientation (portrait or landscape)
 * Select which part of the monitor is visible or zoom it
-* Track windows (active window is always visible) and save its own scale for each of them
+* Track windows (active window is always visible) and save scale for each of them
 * Easily switch between windows
 * Adjust active window's size to dimensions of the reader's screen
 * See a cursor and restrict its movements to the area visible on the reader
@@ -30,9 +30,7 @@ You can:
 
 ### Compatibility
 
-A client application is compatible with readers from *Pocketbook Pro/Touch* series (most of modern *Pocketbook* models with E-Ink screen). Testing was performed on *Pocketbook Touch* and *Touch 2*.
-
-A server is compatible only with computers with *Linux* and *X11* window system.
+A client application is compatible with readers from *Pocketbook Pro/Touch* series (most of the recent *Pocketbook* models with E-Ink screen). A server is compatible only with computers with *Linux* and *X11* window system.
 
 ### Warning about possible damage
 
@@ -73,7 +71,7 @@ Installation
 
 		$ sudo make uninstall
 
-4. Check shortcuts scheme. Default scheme is designed for keyboards with numpad (see [full description](#default-shortcuts-scheme)). If you don't have numpad or this scheme will be uncomfortable for you, you can change it as described [here](#configuration).
+4. Check shortcuts scheme. The defaults are designed for keyboards with numpad (see [full description](#default-shortcuts-scheme)). If you don't have numpad or this scheme will be uncomfortable for you, you can change it as described [here](#configuration).
 
 	Note that these shortcuts must not overlap with other system-wide shortcuts.
 
@@ -109,11 +107,11 @@ How to use
 	<i>[...]</i>
 	</pre>
 
-2. Run the server using command:
+2. Run the server using the command:
 
 		$ sudo remoteinkd start
 
-	You can check that the server is started using command:
+	You can check that the server is started using the command:
 
 	<pre>
 	$ sudo remoteinkd status
@@ -121,7 +119,7 @@ How to use
 	[*] remoteinkd <b>is running</b> (PID 1234)
 	</pre>
 
-	If command doesn't show that server is running, go to [Troubleshooting](#troubleshooting) section.
+	If the command doesn't show that server is running, go to [Troubleshooting](#troubleshooting) section.
 
 3. Open *remoteink* application on the reader. Use an interface (it supports control via touchscreen or physical keys) to enter server's IP and password and press "Connect" button. Select your network if you weren't connected to it yet.
 
@@ -139,7 +137,7 @@ How to use
 
 ### Connection via USB
 
-Working via USB is implemented using `g_ether.ko` Linux kernel module. It is supported by most of models of the compatible readers and must present on the server-side.
+Working via USB is implemented using `g_ether.ko` Linux kernel module. The module is installed on the most of the compatible readers and must present on the server-side.
 
 1. On the reader open menu *Settings* -> *Connectivity* -> *USB Mode* and select *Network over USB*.
 
@@ -171,7 +169,7 @@ There are two modes in the application: when window tracking is enabled and when
 
 `Ctrl`+`Alt`+`Num 5` &ndash; Reset frame relative position to default
 
-Also, you can zoom the visible image. Scale is stored separately for each window and different modes (default scale for each mode can be changed in the config). Default scale for a mode with disabled window tracking is so small that you can see the entire desktop. So this mode can be used if you want to switch between windows using mouse, move windows, look on desktop panels or the system tray.
+Also, you can zoom the visible image. The scale is stored separately for each window and different modes (default scale for each mode can be changed in the config). Default scale for a mode with disabled window tracking is so small that you can see the entire desktop. So, this mode can be used if you want to switch between windows using a mouse, move windows, look on desktop panels or the system tray.
 
 `Ctrl`+`Alt`+`Num 3`/`9` &ndash; Zoom
 
@@ -181,7 +179,7 @@ If an opened window doesn't fit into the reader's screen, you can adjust window 
 
 `Ctrl`+`Alt`+`Num 7` &ndash; Adjust window size (if possible)
 
-Some additional opportunities are available. Generally usage of a mouse via the slow reader's screen is inconvinient, but there is a cursor capturing mode when the cursor becomes visible and its movement is bounded in the captured frame.
+Some additional opportunities are available. Generally, usage of a mouse via the slow reader's screen is inconvenient, but there is a cursor capturing mode when the cursor becomes visible, and its movement is bounded in the captured frame.
 
 `Ctrl`+`Alt`+`Num Del` &ndash; Toggle cursor capturing
 
@@ -192,7 +190,7 @@ Configuration
 
 Different settings (such as a shortcuts scheme, server's port or maximal FPS value) can be changed in `/etc/remoteinkd/config.ini`. The config has comments that help you to understand purpose and format of each option.
 
-The password's hash is stored in `/etc/remoteinkd/passwd` and can be changed using command:
+The password's hash is stored in `/etc/remoteinkd/passwd` and can be changed using the command:
 
 	$ sudo remoteinkd passwd
 
@@ -203,7 +201,7 @@ Troubleshooting
 
 ### Check whether connection is not blocked
 
-A reader's connection can be blocked by a firewall. You should add a rule that allows connections to *remoteinkd* (default port is *9312/tcp*) or temporarily disable the firewall.
+A firewall can block a reader's connection. You should add a rule that allows connections to *remoteinkd* (default port is *9312/tcp*) or try to disable the firewall temporarily.
 
 ### Look up error messages
 
@@ -217,27 +215,27 @@ $ grep remoteinkd /var/log/syslog | tail
 Feb 13 19:54:22 hostname <b>remoteinkd: Unknown modifier in shortcut "Ctrk+Alt+KP_8"</b>
 </pre>
 
-In this case the daemon informs that one of shortcut's modifiers is incorrect. You should check the correctness of defined shortcuts in the config (actually, there's a typo in a modifier name - *Ctrk* instead of *Ctrl*).
+In this case, the daemon informs that one of shortcut's modifiers is incorrect. You should check the correctness of defined shortcuts in the config (actually, there's a typo in a modifier name - *Ctrk* instead of *Ctrl*).
 
 ### If monitor's color depth is unsupported
 
-Only 24-bit color depth is supported yet. You can reconfigure your distribution to use this depth. For example, in *Raspbian* running on Raspberry Pi you can add the following lines to `/boot/config.txt` (and restart the system):
+Only 24-bit color depth is supported. You can reconfigure your distribution to use this depth. For example, in *Raspbian* running on Raspberry Pi you can add the following lines to `/boot/config.txt` (and restart the system):
 
 	framebuffer_depth=32
 	framebuffer_ignore_alpha=1
 
 ### If shortcuts don't work well
 
-Shortcuts are tested only in classic window managers yet. Disabling tiling mode or using more common WM may be helpful.
+Shortcuts are tested only in traditional window managers. If you use less common WM, try to disable tiling mode.
 
 ### If the daemon's CPU usage is too much
 
-It is possible on machines with weak processors (including Raspberry Pi). Try to halve value of `MaxFPS` parameter in the config.
+It is possible on machines with weak processors (including Raspberry Pi). Try to halve the value of `MaxFPS` parameter in the config.
 
 Alternatives
 ------------
 
-* You can prefer a VNC client for Pocketbook created by *othb08me09zp* (and slightly modified by me). It uses the well-known cross-platform protocol, but may be less convenient for managing windows during daily work.
+* You can prefer a VNC client for Pocketbook created by *othb08me09zp* (and slightly modified by me). It uses the popular cross-platform protocol but may be less convenient for managing windows during daily work.
 
 	[Download](https://goo.gl/iBnDGZ) | [Discussion](http://www.the-ebook.org/forum/viewtopic.php?t=21814) (in Russian)
 
@@ -247,12 +245,12 @@ What else can be implemented?
 * Scrolling or pressing mouse keys using a reader's touchscreen
 * The client and the server can be ported to other platforms
 
-What can be improved in the current implementation?
----------------------------------------------------
+What can be done to improve the current implementation?
+-------------------------------------------------------
 
 * Use `xcb-damage` (it can reduce CPU usage)
 * Release resources and use sockets more carefully
-* Support different screen depths (only 24-bit depth is supported yet)
+* Support different screen depths (only 24-bit depth is supported now)
 
 Author
 ------

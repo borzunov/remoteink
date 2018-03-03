@@ -81,9 +81,9 @@ Installation
 
 ### Client
 
-Place [remoteink.app](client/dist/remoteink.app) into `applications/` folder in your reader's memory (the folder may be hidden on some devices).
+Place [remoteink.app](https://github.com/borzunov/remoteink/raw/master/client/dist/remoteink.app) into `applications/` folder in your reader's memory (the folder may be hidden on some devices).
 
-It is not required, but if you want to build the client by yourself, you can install Pocketbook Pro SDK and compile the client using the following commands:
+If you want to compile the client by yourself, use Sergei Vlasov's Pocketbook Pro SDK and the following commands:
 
 	$ cd remoteink/client
 	$ make BUILD=arm_gnueabi

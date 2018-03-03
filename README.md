@@ -81,7 +81,7 @@ Installation
 
 ### Client
 
-Extract an executable file from [this archive](https://github.com/borzunov/remoteink/releases/download/v0.2/remoteink.app.zip) (it's for *v0.2*) and place it into `applications/` folder in your reader's memory (the folder may be hidden on some devices).
+Place [remoteink.app](client/dist/remoteink.app) into `applications/` folder in your reader's memory (the folder may be hidden on some devices).
 
 It is not required, but if you want to build the client by yourself, you can install Pocketbook Pro SDK and compile the client using the following commands:
 

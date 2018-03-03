@@ -308,7 +308,8 @@ int main_handler(int type, int par1, int par2) {
 			get_default_config_path(CONFIG_BASENAME,
 					config_filename, CONFIG_FILENAME_SIZE);
 			options_config_load(config_filename);
-			
+
+			SetPanelType(0);
 			update_orientation();
 			
 			font_title = OpenFont("cour", 30, 1);

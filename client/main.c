@@ -5,7 +5,7 @@
 #include "options.h"
 #include "ui.h"
 
-#define TEXT_TITLE "RemoteInk v0.2"
+#define TEXT_TITLE "RemoteInk v0.3"
 
 #define CONFIG_BASENAME "remoteink.ini"
 
@@ -239,7 +239,7 @@ void show_intro() {
 	
 	clear_labels();
 	add_label("Tool for using E-Ink reader as computer monitor");
-	add_label("Copyright (c) 2013-2015 Alexander Borzunov");
+	add_label("Copyright © 2013-2018 Alexander Borzunov");
 	label_y += PARAGRAPH_EXTRA_SPACING * 2;
 	
 	add_label("    Controls");

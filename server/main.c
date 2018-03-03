@@ -28,7 +28,7 @@
 #include <unistd.h>
 
 
-#define TEXT_TITLE "RemoteInk v0.2"
+#define TEXT_TITLE "RemoteInk v0.3"
 
 #define DAEMON_NAME "remoteinkd"
 

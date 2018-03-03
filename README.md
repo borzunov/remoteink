@@ -255,4 +255,4 @@ What can be done to improve the current implementation?
 Author
 ------
 
-Copyright &copy; 2013-2017 Alexander Borzunov
+Copyright &copy; 2013-2018 Alexander Borzunov

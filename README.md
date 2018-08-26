@@ -3,8 +3,8 @@ RemoteInk
 
 A tool for using PocketBook Pro/Touch E-Ink reader as a computer monitor on Linux
 
-Purposes
---------
+Description
+-----------
 
 This application is designed for people who like to use E-Ink displays. It's suitable for tasks where a color monitor and high reaction time aren't necessary: reading and writing texts, programming, etc.
 
@@ -32,9 +32,7 @@ You can:
 
 A client application is compatible with readers from *Pocketbook Pro/Touch* series (most of the recent *Pocketbook* models with E-Ink screen). A server is compatible only with computers with *Linux* and *X11* window system.
 
-### Warning about possible damage
-
-Note that this program is experimental. Readers' screens are not intended to update so frequently, so using the program can lead to malfunction of the screen or reduce its lifetime. The developer of the program is not responsible for possible damage to your device.
+> **Warning:** Your E-Ink display may not be designed to be updated so often. The developer of this program is not responsible for possible damage to your device.
 
 Installation
 ------------
@@ -83,12 +81,16 @@ Installation
 
 Place [remoteink.app](https://github.com/borzunov/remoteink/raw/master/client/dist/remoteink.app) into `applications/` folder in your reader's memory (the folder may be hidden on some devices).
 
-If you want to compile the client by yourself, use Sergei Vlasov's Pocketbook Pro SDK and the following commands:
+### Compiling the client from sources (optional)
+
+Use Sergei Vlasov's Pocketbook Pro SDK and the following commands:
 
 	$ cd remoteink/client
 	$ make BUILD=arm_gnueabi
 
-Then executable `obj_arm_gnueabi/remoteink.app` will be created.
+This will create executable `obj_arm_gnueabi/remoteink.app`.
+
+> **Update:** Since the version of Pocketbook Pro SDK by Sergei Vlasov is not available for download anymore, you may want to use the official [Pocketbook Pro SDK](https://github.com/pocketbook/SDK_481/tree/master). Also, [@calcreg](https://github.com/calcreg) have posted [instructions](https://github.com/borzunov/remoteink/issues/10) on how to run the client inside an emulator from this version of the SDK on a Linux desktop.
 
 How to use
 ----------

@@ -90,7 +90,7 @@ Use Sergei Vlasov's Pocketbook Pro SDK and the following commands:
 
 This will create executable `obj_arm_gnueabi/remoteink.app`.
 
-> **Update:** Since the version of Pocketbook Pro SDK by Sergei Vlasov is not available for download anymore, you may want to use the official [Pocketbook Pro SDK](https://github.com/pocketbook/SDK_481/tree/master). Also, [@calcreg](https://github.com/calcreg) have posted [instructions](https://github.com/borzunov/remoteink/issues/10) on how to run the client inside an emulator from this version of the SDK on a Linux desktop.
+> **Update:** Since the version of Pocketbook Pro SDK by Sergei Vlasov is not available for download anymore, you may want to use the official [Pocketbook Pro SDK](https://github.com/pocketbook/SDK_481/tree/master). [@calcreg](https://github.com/calcreg) has posted [instructions](https://github.com/borzunov/remoteink/issues/10) on how to run the client inside an emulator from this version of the SDK on a Linux desktop.
 
 How to use
 ----------

@@ -1,7 +1,7 @@
 RemoteInk
 =========
 
-A tool for using PocketBook Pro/Touch E-Ink reader as a computer monitor on Linux
+A tool for using PocketBook E-Ink reader as a computer monitor on Linux
 
 Description
 -----------
@@ -15,7 +15,7 @@ This application is designed for people who like to use E-Ink displays. It's sui
 ### Features
 
 You can:
-* Connect a reader to a computer using Wi-Fi or USB
+* Connect a reader to a computer using Wi-Fi or USB (if supported by your device)
 * Configure connection parameters in UI on the reader
 * Change the reader's screen orientation (portrait or landscape)
 * Select which part of the monitor is visible or zoom it
@@ -26,13 +26,29 @@ You can:
 * Invert screen colors
 * Customize keyboard shortcuts for most of the actions above
 * Set a password for a connection
-* Use the application with a typical computer (with *i686/amd64* architecture) or Raspberry Pi
 
-### Compatibility
+### Requirements
 
-A client application is compatible with readers from *Pocketbook Pro/Touch* series (most of the recent *Pocketbook* models with E-Ink screen). A server is compatible only with computers with *Linux* and *X11* window system.
+* __Computer:__ OS Linux with X11 window system.
 
-> **Warning:** Your E-Ink display may not be designed to be updated so often. The developer of this program is not responsible for possible damage to your device.
+    Both typical computers (with i686/amd64 architecture) and Raspberry Pi are supported.
+
+* __Reader:__ Pocketbook Pro/Touch series (that is, most of the Pocketbook models with an E-Ink screen).
+
+    In particular, users have successfully run RemoteInk on the following devices:
+
+	- Pocketbook Aqua 2 ([report](https://www.mobileread.com/forums/showthread.php?t=256203&page=2#25) + [patch](https://www.mobileread.com/forums/showthread.php?t=256203&page=2#28) to unshift the screen)
+	- PocketBook Inkpad (via Wi-Fi, [report](https://www.mobileread.com/forums/showthread.php?t=256203#12))
+	- PocketBook Inkpad 3 (Wi-Fi only, [report](https://github.com/borzunov/remoteink/issues/11))
+	- Pocketbook Pro 902 (via Wi-Fi, [report](https://www.mobileread.com/forums/showthread.php?t=256203#15))
+	- Pocketbook Pro 912 ([report 1](https://www.mobileread.com/forums/showthread.php?t=256203&page=2#17), [report 2](https://www.mobileread.com/forums/showthread.php?t=256203&page=2#22))
+	- PocketBook Touch (the developer's device, see the photo above)
+	- PocketBook Touch 2 ([report](https://www.mobileread.com/forums/showthread.php?t=256203&page=2#19))
+	- PocketBook Touch Lux 3 ([report](https://www.mobileread.com/forums/showthread.php?t=256203&page=2#22))
+    
+    Feel free to make PRs with additions to this list if you manage to run RemoteInk on another device.
+
+    > **Warning:** Your E-Ink display may not be designed to be updated so often. The developer of this program is not responsible for possible damage to your device.
 
 Installation
 ------------
@@ -139,7 +155,7 @@ How to use
 
 ### Connection via USB
 
-Working via USB is implemented using `g_ether.ko` Linux kernel module. The module is installed on the most of the compatible readers and must present on the server-side.
+Working via USB is implemented using `g_ether.ko` Linux kernel module. The module is installed on the some of the compatible readers and must present on the server-side.
 
 1. On the reader open menu *Settings* -> *Connectivity* -> *USB Mode* and select *Network over USB*.
 

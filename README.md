@@ -44,6 +44,7 @@ You can:
 	- Pocketbook Pro 912 ([report 1](https://www.mobileread.com/forums/showthread.php?t=256203&page=2#17), [report 2](https://www.mobileread.com/forums/showthread.php?t=256203&page=2#22))
 	- PocketBook Touch (the developer's device, see the photo above)
 	- PocketBook Touch 2 ([report](https://www.mobileread.com/forums/showthread.php?t=256203&page=2#19))
+	- PocketBook Touch HD 3 ([report](https://github.com/borzunov/remoteink/issues/12#issuecomment-913458456))
 	- PocketBook Touch Lux 3 ([report](https://www.mobileread.com/forums/showthread.php?t=256203&page=2#22))
     
     Feel free to make PRs with additions to this list if you manage to run RemoteInk on another device.

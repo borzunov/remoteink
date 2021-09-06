@@ -14,7 +14,7 @@ before section definition in \"%s\""
 #define ERR_INI_REQUIRED_PARAM "Required parameter \"%s\" in section \"%s\" "\
 		"not found in \"%s\""
 
-FILE *f;
+static FILE *f;
 
 void defer_ini_parser_fclose_f() {
 	fclose(f);
@@ -28,21 +28,21 @@ ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
 	if (f == NULL)
 		PANIC(ERR_FILE_OPEN_FOR_READING, filename);
 	push_defer(defer_ini_parser_fclose_f);
-	
+
 	const struct IniSection *cur_section = NULL;
 	while (fgets(line_buffer, LINE_BUFFER_SIZE, f)) {
 		if (ferror(f))
 			PANIC_WITH_DEFER(ERR_FILE_READ, filename);
-		
+
 		int len = strlen(line_buffer);
 		if (line_buffer[len - 1] == '\n')
 			len--;
 		line_buffer[len] = 0;
-		
+
 		// Handle empty lines and comments
 		if (!len || line_buffer[0] == ';' || line_buffer[0] == '#')
 			continue;
-		
+
 		// Handle sections
 		if (line_buffer[0] == '[' && line_buffer[len - 1] == ']') {
 			line_buffer[len - 1] = 0;
@@ -58,7 +58,7 @@ ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
 						line_buffer + 1, filename);
 			continue;
 		}
-		
+
 		// Handle keys
 		int i;
 		for (i = 0; i < len - 2; i++)
@@ -67,11 +67,11 @@ ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
 				line_buffer[i + 2] == ' '
 			) {
 				line_buffer[i] = 0;
-				
+
 				if (cur_section == NULL)
 					PANIC_WITH_DEFER(ERR_INI_PARAM_BEFORE_SECTION,
 							line_buffer, filename);
-				
+
 				int j;
 				for (j = 0; cur_section->params[j].key != NULL; j++) {
 					struct IniParam *cur_param = &cur_section->params[j];
@@ -90,13 +90,13 @@ ExcCode ini_load(const char *filename, const struct IniSection sections[]) {
 							line_buffer, cur_section->title, filename);
 				break;
 			}
-			
+
 		if (i == len - 2)
 			PANIC_WITH_DEFER(ERR_INI_AMBIGOUS_LINE, line_buffer, filename);
 	}
-	
+
 	pop_defer(defer_ini_parser_fclose_f);
-	
+
 	for (int i = 0; sections[i].title != NULL; i++) {
 		cur_section = &sections[i];
 		for (int j = 0; cur_section->params[j].key != NULL; j++) {
@@ -117,7 +117,7 @@ ExcCode ini_save(const char *filename, const struct IniSection sections[]) {
 	if (f == NULL)
 		PANIC(ERR_FILE_OPEN_FOR_WRITING, filename);
 	push_defer(defer_ini_parser_fclose_f);
-	
+
 	for (int i = 0; sections[i].title != NULL; i++) {
 		const struct IniSection *cur_section = &sections[i];
 		if (fprintf(f, "[%s]\n", cur_section->title) < 0)
@@ -132,7 +132,7 @@ ExcCode ini_save(const char *filename, const struct IniSection sections[]) {
 				PANIC_WITH_DEFER(ERR_FILE_WRITE, filename);
 		}
 	}
-	
+
 	pop_defer(defer_ini_parser_fclose_f);
 	return 0;
 }

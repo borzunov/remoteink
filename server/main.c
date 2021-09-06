@@ -85,14 +85,14 @@ ExcCode image_expand(Imlib_Image *image, int dest_width, int dest_height) {
 	Imlib_Image dest_image = imlib_create_image(dest_width, dest_height);
 	if (dest_image == NULL)
 		PANIC(ERR_IMAGE);
-	
+
 	imlib_context_set_image(dest_image);
 	imlib_context_set_color(0, 0, 0, 255);
 	imlib_image_fill_rectangle(0, 0, dest_width, dest_height);
 	imlib_blend_image_onto_image(*image, 0, 0, 0, source_width, source_height,
 			(dest_width - source_width) / 2, (dest_height - source_height) / 2,
 			source_width, source_height);
-	
+
 	imlib_context_set_image(*image);
 	imlib_free_image_and_decache();
 	*image = dest_image;
@@ -139,7 +139,7 @@ ExcCode draw_label(Imlib_Image image) {
 		text = NULL;
 		return 0;
 	}
-	
+
 	int label_width, label_height;
 	imlib_get_text_size(text, &label_width, &label_height);
 	imlib_context_set_image(image);
@@ -175,7 +175,7 @@ ExcCode image_turn_to_data(Imlib_Image image, unsigned **res) {
 void track_focused_window() {
 	if (control_context_get() != NULL)
 		control_update_frame();
-	
+
 	xcb_window_t window;
 	if (!window_tracking_enabled || screen_get_focused(&window))
 		screen_get_root(&window);
@@ -224,12 +224,12 @@ ExcCode send_first_frame(unsigned **image_data,
 		int client_width, int client_height) {
 	pthread_mutex_lock(&control_lock);
 	push_defer(defer_unlock_control_lock);
-	
+
 	TRY_WITH_DEFER(get_screenshot_data_checked(
 			image_data, client_width, client_height, conn_fd));
 	TRY_WITH_DEFER(transfer_image_send_all(
 			conn_fd, *image_data, client_width, client_height));
-	
+
 	pop_defer(defer_unlock_control_lock);
 	return 0;
 }
@@ -242,16 +242,16 @@ ExcCode send_next_frame(unsigned **image_data,
 	// Check whether connection is dead. If so, SIGPIPE will be sent.
 	if (write(conn_fd, &conn_check_char, sizeof (char)) < 0)
 		PANIC(ERR_SOCK_TRANSFER);
-	
+
 	pthread_mutex_lock(&control_lock);
 	push_defer(defer_unlock_control_lock);
-	
+
 	profiler_start(STAGE_SHOT);
 	unsigned *next_image_data;
 	TRY_WITH_DEFER(get_screenshot_data_checked(
 			&next_image_data, client_width, client_height, conn_fd));
 	profiler_finish(STAGE_SHOT);
-	
+
 	unsigned i, j;
 	for (i = 0; i < height_divisor; i++)
 		for (j = 0; j < width_divisor; j++)
@@ -266,7 +266,7 @@ ExcCode send_next_frame(unsigned **image_data,
 
 	profiler_traffic_count_uncompressed(client_width * client_height * 4);
 	has_stats = 1;
-	
+
 	pop_defer(defer_unlock_control_lock);
 	return 0;
 }
@@ -288,7 +288,7 @@ ExcCode client_handshake(int *client_width, int *client_height) {
 		transfer_send_error(conn_fd, ERR_CLIENT_VERSION);
 		PANIC(ERR_CLIENT_VERSION);
 	}
-		
+
 	TRY(transfer_recv_string(conn_fd, &line));
 	int is_correct;
 	TRY(security_check_password(line, &is_correct));
@@ -296,7 +296,7 @@ ExcCode client_handshake(int *client_width, int *client_height) {
 		transfer_send_error(conn_fd, ERR_WRONG_PASSWORD);
 		PANIC(ERR_WRONG_PASSWORD);
 	}
-		
+
 	if (read(conn_fd, transfer_buffer, COORD_SIZE * 2) != COORD_SIZE * 2)
 		PANIC(ERR_SOCK_TRANSFER);
 	int i = -1;
@@ -322,7 +322,7 @@ ExcCode screen_of_display(xcb_connection_t *c, int screen,
 void *handle_shortcuts(void *arg) {
 	if (shortcuts_handle_start(shortcuts)) {
 		syslog(LOG_CRIT, "%s", exc_message);
-		
+
 		state = STATE_SHUTDOWN;
 		close(serv_fd);
 	}
@@ -358,7 +358,7 @@ char font_imlib_repr[FONT_IMLIB_REPR_SIZE];
 
 ExcCode load_fonts() {
 	push_defer(defer_for_load_fonts);
-	
+
 	if (FcInit() == FcFalse)
 		PANIC_WITH_DEFER(ERR_FONT, font_pattern_repr);
 	font_pattern = FcNameParse((const FcChar8 *) font_pattern_repr);
@@ -367,7 +367,7 @@ ExcCode load_fonts() {
 	FcDefaultSubstitute(font_pattern);
 	FcResult result;
 	font_match = FcFontMatch(0, font_pattern, &result);
-	
+
 	FcChar8 *filename;
 	if (FcPatternGetString(font_match, FC_FILE, 0, &filename) != FcResultMatch)
 		PANIC_WITH_DEFER(ERR_FONT, font_pattern_repr);
@@ -376,7 +376,7 @@ ExcCode load_fonts() {
 	double size;
 	if (FcPatternGetDouble(font_match, FC_SIZE, 0, &size) != FcResultMatch)
 		PANIC_WITH_DEFER(ERR_FONT, font_pattern_repr);
-	
+
 	imlib_add_path_to_font_path((char *) font_dirname);
 	remove_extension((char *) font_basename);
 	snprintf(font_imlib_repr, FONT_IMLIB_REPR_SIZE, "%s/%.0lf",
@@ -385,18 +385,18 @@ ExcCode load_fonts() {
 	if (label_font == NULL)
 		PANIC_WITH_DEFER(ERR_FONT, font_pattern_repr);
 	imlib_context_set_font(label_font);
-	
+
 	pop_defer(defer_for_load_fonts);
 	return 0;
 }
 
-xcb_connection_t *display;
+static xcb_connection_t *display;
 pthread_t shortcuts_thread;
 
 #define ERR_SCREEN_DEPTH "Your screen has %d-bit color depth, " \
 		"but only 24-bit depth is supported yet"
 
-ExcCode server_create() {	
+ExcCode server_create() {
 	int default_screen_no;
 	display = xcb_connect(NULL, &default_screen_no);
 	if (xcb_connection_has_error(display))
@@ -407,23 +407,23 @@ ExcCode server_create() {
 	int screen_height = screen->height_in_pixels;
 	xcb_window_t root = screen->root;
 	control_screen_dimensions_set(screen_width, screen_height);
-	
+
 	int depth = screen->root_depth;
 	if (depth != 24)
 		PANIC(ERR_SCREEN_DEPTH, depth);
-	
+
 	TRY(screen_init(display, screen, root));
 	TRY(shortcuts_init(display, screen, root));
-	
+
 	TRY(options_config_load(config_filename));
 	syslog(LOG_DEBUG,
 			"Monitor resolution: %dx%d", screen_width, screen_height);
-	
+
 	load_fonts();
-	
+
 	if (pthread_mutex_init(&control_lock, NULL))
 		PANIC(ERR_MUTEX_INIT);
-	int shortcuts_res;	
+	int shortcuts_res;
 	if (pthread_create(&shortcuts_thread, NULL,
 			handle_shortcuts, &shortcuts_res))
 		PANIC(ERR_THREAD_CREATE);
@@ -436,19 +436,19 @@ ExcCode server_create() {
 
 void server_destroy() {
 	close(serv_fd);
-	
+
 	shortcuts_handle_stop();
-	
+
 	imlib_free_font();
-	
+
 	shortcuts_free();
 	screen_free();
-	
+
 	xcb_disconnect(display);
-	
+
 	pthread_cancel(shortcuts_thread);
 	pthread_mutex_destroy(&control_lock);
-	
+
 	if (has_stats && stats_enabled) {
 		if (profiler_save(stats_filename))
 			syslog(LOG_ERR, "%s", exc_message);
@@ -459,7 +459,7 @@ void server_destroy() {
 
 ExcCode server_setup() {
 	profiler_traffic_init();
-	
+
 	struct hostent *serv = gethostbyname(server_host);
 	if (serv == NULL)
 		PANIC(ERR_SOCK_RESOLVE, server_host);
@@ -467,7 +467,7 @@ ExcCode server_setup() {
 	serv_addr.sin_family = AF_INET;
 	memcpy(&serv_addr.sin_addr.s_addr, serv->h_addr, serv->h_length);
 	serv_addr.sin_port = htons(server_port);
-	
+
 	int optval = 1;
 	size_t optlen = sizeof(int);
 	if (setsockopt(serv_fd, SOL_SOCKET, SO_REUSEADDR, &optval, optlen))
@@ -488,7 +488,7 @@ void defer_close_conn_fd() {
 
 ExcCode server_handle_client(const struct sockaddr_in *client_addr) {
 	push_defer(defer_close_conn_fd);
-	
+
 	syslog(LOG_INFO, "Accepted client connection from %s",
 			inet_ntoa(client_addr->sin_addr));
 	int client_width, client_height;
@@ -496,17 +496,17 @@ ExcCode server_handle_client(const struct sockaddr_in *client_addr) {
 	control_client_dimensions_set(client_width, client_height);
 	syslog(LOG_DEBUG,
 			"Reader resolution: %dx%d", client_width, client_height);
-	
+
 	control_label_set("Connected");
-	
+
 	unsigned *image_data;
 	TRY_WITH_DEFER(send_first_frame(&image_data, client_width, client_height));
-	
+
 	unsigned region_width = client_width / width_divisor;
 	unsigned region_height = client_height / height_divisor;
 	while (state == STATE_HANDLE_CLIENT) {
 		long long frame_start_time = get_time_nsec();
-		
+
 		TRY_WITH_DEFER(send_next_frame(&image_data,
 				client_width, client_height, region_width, region_height));
 
@@ -520,7 +520,7 @@ ExcCode server_handle_client(const struct sockaddr_in *client_addr) {
 					frame_duration / NSECS_PER_MSEC);
 	}
 	syslog(LOG_INFO, "Client disconnected");
-	
+
 	pop_defer(defer_close_conn_fd);
 	return 0;
 }
@@ -528,14 +528,14 @@ ExcCode server_handle_client(const struct sockaddr_in *client_addr) {
 
 void fatal_handler(int code) {
 	pop_all_defers();
-	
+
 	syslog(LOG_NOTICE, "Caught signal \"%s\", shutted down", strsignal(code));
 	exit(EXIT_SUCCESS);
 }
 
 void term_handler(int code) {
 	pop_all_defers();
-	
+
 	syslog(LOG_INFO, "Server shutted down");
 	exit(EXIT_SUCCESS);
 }
@@ -544,7 +544,7 @@ void kick_handler(int code) {
 	if (state == STATE_HANDLE_CLIENT) {
 		state = STATE_LISTEN;
 		close(conn_fd);
-		
+
 		syslog(LOG_ERR, "Client has kicked");
 	}
 }
@@ -553,7 +553,7 @@ void broken_pipe_handler(int code) {
 	if (state == STATE_HANDLE_CLIENT) {
 		state = STATE_LISTEN;
 		close(conn_fd);
-		
+
 		syslog(LOG_ERR, ERR_SOCK_TRANSFER);
 	}
 }
@@ -572,23 +572,23 @@ ExcCode configure_signal_handlers() {
 	struct sigaction action;
 	sigemptyset(&action.sa_mask);
 	action.sa_flags = 0;
-	
+
 	action.sa_handler = SIG_IGN;
 	for (int i = 0; signals_ignored[i]; i++)
 		if (sigaction(signals_ignored[i], &action, NULL))
 			PANIC(ERR_SIGNAL_CONFIGURE);
-	
+
 	action.sa_handler = fatal_handler;
 	for (int i = 0; signals_fatal[i]; i++)
 		if (sigaction(signals_fatal[i], &action, NULL))
 			PANIC(ERR_SIGNAL_CONFIGURE);
-	
+
 	action.sa_handler = term_handler;
 	sigaction(SIGTERM, &action, NULL);
-	
+
 	action.sa_handler = kick_handler;
 	sigaction(SIGINT, &action, NULL);
-	
+
 	action.sa_handler = broken_pipe_handler;
 	sigaction(SIGPIPE, &action, NULL);
 	return 0;
@@ -597,23 +597,23 @@ ExcCode configure_signal_handlers() {
 ExcCode daemon_main() {
 	TRY(server_create());
 	push_defer(server_destroy);
-	
+
 	TRY_WITH_DEFER(server_setup());
 	syslog(LOG_INFO, "Server listens on %s:%d", server_host, server_port);
-	while (state == STATE_LISTEN || state == STATE_HANDLE_CLIENT) {		
+	while (state == STATE_LISTEN || state == STATE_HANDLE_CLIENT) {
 		struct sockaddr_in client_addr;
 		socklen_t client_len = sizeof (struct sockaddr_in);
 		conn_fd = accept(serv_fd, (struct sockaddr *) &client_addr,
 				&client_len);
 		if (conn_fd < 0)
-			PANIC_WITH_DEFER(ERR_SOCK_ACCEPT);	
+			PANIC_WITH_DEFER(ERR_SOCK_ACCEPT);
 		state = STATE_HANDLE_CLIENT;
 		if (server_handle_client(&client_addr) && state > STATE_LISTEN) {
 			state = STATE_LISTEN;
 			syslog(LOG_ERR, "%s", exc_message);
 		}
 	}
-	
+
 	pop_defer(server_destroy);
 	return 0;
 }
@@ -646,17 +646,17 @@ void defer_fclose_lock_file() {
 	fclose(lock_file);
 }
 
-enum SendSignalResult send_signal_to_daemon(int signal_code, pid_t *lock_pid) {	
+enum SendSignalResult send_signal_to_daemon(int signal_code, pid_t *lock_pid) {
 	lock_file = fopen(lock_filename, "r");
 	if (lock_file == NULL)
 		return SEND_FAIL_OPEN_LOCK;
 	push_defer(defer_fclose_lock_file);
-	
+
 	if (fscanf(lock_file, "%d", lock_pid) != 1)
 		return SEND_INCORRECT_LOCK_FILE_CONTENT;
-		
+
 	pop_defer(defer_fclose_lock_file);
-	
+
 	// Check whether process with PID from the lock file is running
 	if (kill(*lock_pid, signal_code)) {
 		if (errno == ESRCH)
@@ -676,7 +676,7 @@ void defer_close_and_unlink_lock_file() {
 ExcCode run_daemon() {
 	// Load password beforehand
 	TRY(security_load_password(password_filename));
-	
+
 	// Try to grab the lock file
 	lock_fd = open(lock_filename, O_RDWR | O_CREAT | O_EXCL, 0644);
 	if (lock_fd == -1) {
@@ -695,18 +695,18 @@ ExcCode run_daemon() {
 				PANIC(ERR_LOCK_ALREADY_RUNNING, lock_pid);
 		}
 	}
-	
+
 	push_defer(defer_close_and_unlink_lock_file);
-	
+
 	// Set a lock on the lock file
 	if (lockf(lock_fd, F_TLOCK, 0) < 0)
 		PANIC_WITH_DEFER(ERR_LOCK_ACQUIRE, lock_filename);
-		
+
 	// Set our current working directory to root to avoid tying up
 	// any directories
 	if (chdir("/") < 0)
 		PANIC_WITH_DEFER(ERR_DAEMON_START);
-	
+
 	// Move ourselves into the background and become a daemon.
 	// Open file descriptors among others are inherited here.
 	switch (fork()) {
@@ -719,24 +719,24 @@ ExcCode run_daemon() {
 			exit(EXIT_SUCCESS);
 			break;
 	}
-	
+
 	// Make the process a session and process group leader
 	if (setsid() < 0)
 		PANIC_WITH_DEFER(ERR_DAEMON_START);
-		
+
 	// Restrict file creation mode to 640 for security purposes
 	umask(0137);
-	
+
 	configure_signal_handlers();
-	
+
 	// Save PID
 	int pid = getpid();
 	snprintf(pid_buffer, PID_BUFFER_SIZE, "%d\n", pid);
 	if (write(lock_fd, pid_buffer, strlen(pid_buffer)) < 0)
 		PANIC_WITH_DEFER(ERR_FILE_WRITE, lock_filename);
-		
+
 	printf("[+] " DAEMON_NAME " started (PID %d)\n", pid);
-	
+
 	// Close unnecessary resources
 	for (int i = getdtablesize(); i >= 0; i--)
 		if (i != lock_fd)
@@ -750,18 +750,18 @@ ExcCode run_daemon() {
 		PANIC_WITH_DEFER(ERR_DAEMON_START);
 	if (dup(stdio_fd) == -1)
 		PANIC_WITH_DEFER(ERR_DAEMON_START);
-	
+
 	openlog(DAEMON_NAME, LOG_CONS, LOG_LOCAL0);
-	
+
 	if (daemon_main() && state > STATE_SHUTDOWN) {
 		state = STATE_SHUTDOWN;
 		syslog(LOG_CRIT, "%s", exc_message);
-		
+
 		closelog();
 		pop_defer(defer_close_and_unlink_lock_file);
 		exit(EXIT_FAILURE);
 	}
-	
+
 	closelog();
 	pop_defer(defer_close_and_unlink_lock_file);
 	return 0;
@@ -805,13 +805,13 @@ ExcCode check_whether_daemon_running(int *res, pid_t *lock_pid) {
 
 ExcCode perform_action(int argc, char *argv[]) {
 	printf(TEXT_TITLE " - Server\n");
-	
+
 	if (argc < 2)
 		PANIC(ERR_ACTION_UNSPECIFIED);
 	if (argc > 2)
 		PANIC(ERR_ARG_EXCESS);
 	const char *action = argv[1];
-	
+
 	if (!strcmp(action, "-h") || !strcmp(action, "--help")) {
 		show_help(argv[0]);
 		exit(EXIT_SUCCESS);
@@ -820,7 +820,7 @@ ExcCode perform_action(int argc, char *argv[]) {
 		show_version();
 		exit(EXIT_SUCCESS);
 	}
-	
+
 	pid_t pid;
 	if (!strcmp(action, "start")) {
 		TRY(run_daemon());

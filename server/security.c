@@ -14,7 +14,7 @@ char expected_hash[EXPECTED_HASH_SIZE];
 #define ERR_PASSWORD_UNDEFINED "Can't read password's hash (define " \
 		"password using \"remoteinkd passwd\" or try to use \"sudo\")"
 
-FILE *f;
+static FILE *f;
 
 void defer_security_fclose_f() {
 	fclose(f);
@@ -25,14 +25,14 @@ ExcCode security_load_password(const char *filename) {
 	if (f == NULL)
 		PANIC(ERR_PASSWORD_UNDEFINED);
 	push_defer(defer_security_fclose_f);
-	
+
 	if (fgets(expected_hash, EXPECTED_HASH_SIZE, f) == NULL)
 		PANIC_WITH_DEFER(ERR_FILE_READ, filename);
 	int len = strlen(expected_hash);
 	while (expected_hash[len - 1] == '\n' || expected_hash[len - 1] == '\r')
 		len--;
 	expected_hash[len] = 0;
-	
+
 	pop_defer(defer_security_fclose_f);
 	return 0;
 }
@@ -103,14 +103,14 @@ ExcCode generate_salt(char *buffer) {
 	if (urandom_file == NULL)
 		PANIC(ERR_URANDOM);
 	push_defer(defer_fclose_urandom_file);
-	
+
 	unsigned char random_bytes[SALT_RANDOM_CHARS_COUNT];
 	if (fread(random_bytes, sizeof (unsigned char), SALT_RANDOM_CHARS_COUNT,
 			urandom_file) != SALT_RANDOM_CHARS_COUNT)
 		PANIC_WITH_DEFER(ERR_URANDOM);
-		
+
 	pop_defer(defer_fclose_urandom_file);
-	
+
 	strcpy(buffer, SALT_PREFIX);
 	int pos = strlen(SALT_PREFIX);
 	for (int i = 0; i < SALT_RANDOM_CHARS_COUNT; i++)
@@ -140,13 +140,13 @@ ExcCode security_change_password(const char *filename) {
 		PANIC(ERR_PASSWORD_CONFIRM);
 	if (!*new_password)
 		PANIC(ERR_PASSWORD_EMPTY);
-	
+
 	fill_salt_alphabet();
 	TRY(generate_salt(salt));
 	const char *hash = crypt(new_password, salt);
 	if (hash == NULL)
 		PANIC(ERR_CRYPT_GENERATE);
-	
+
 	f = fopen(filename, "w");
 	if (f == NULL)
 		PANIC(ERR_PASSWORD_SAVE);

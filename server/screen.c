@@ -11,9 +11,9 @@
 #include <xcb/shm.h>
 
 
-xcb_connection_t *display;
-xcb_screen_t *screen;
-xcb_window_t root;
+static xcb_connection_t *display;
+static xcb_screen_t *screen;
+static xcb_window_t root;
 
 #define ERR_X_EXTENSION "Extension \"%s\" isn't available"
 
@@ -42,16 +42,16 @@ ExcCode screen_shm_init() {
 	if (version_reply == NULL)
 		PANIC(ERR_X_EXTENSION, MIT_SHM_EXTENSION_NAME);
 	free(version_reply);
-	
+
 	size_t max_size = screen->width_in_pixels * screen->height_in_pixels *
 			sizeof (unsigned);
 	shmid = shmget(IPC_PRIVATE, max_size, IPC_CREAT | 0777);
 	if (shmid < 0)
-		PANIC(ERR_SHM_ALLOC);		
+		PANIC(ERR_SHM_ALLOC);
 	shmaddr = shmat(shmid, 0, 0);
 	if (shmaddr == (uint8_t *) -1)
 		PANIC(ERR_SHM_ATTACH);
-					
+
 	shmseg = xcb_generate_id(display);
 	xcb_void_cookie_t attach_cookie = xcb_shm_attach_checked(display,
 			shmseg, shmid, 0);
@@ -62,7 +62,7 @@ ExcCode screen_shm_init() {
 
 void screen_shm_free() {
 	xcb_shm_detach_checked(display, shmseg);
-	
+
 	shmdt(shmaddr);
 }
 
@@ -96,7 +96,7 @@ ExcCode screen_init(xcb_connection_t *cur_display,
 	display = cur_display;
 	screen = cur_screen;
 	root = cur_root;
-	
+
 	if (!screen_shm_init())
 		shm_available = 1;
 	else
@@ -130,12 +130,12 @@ ExcCode screen_cursor_blend(int x, int y, Imlib_Image image) {
 		PANIC(ERR_IMAGE);
 	imlib_context_set_image(cursor);
 	imlib_image_set_has_alpha(1);
-	
+
 	imlib_context_set_image(image);
 	imlib_blend_image_onto_image(cursor, 0, 0, 0, reply->width, reply->height,
 			reply->x - reply->xhot - x, reply->y - reply->yhot - y,
 			reply->width, reply->height);
-	
+
 	imlib_context_set_image(cursor);
 	imlib_free_image_and_decache();
 	free(reply);
@@ -154,7 +154,7 @@ ExcCode screen_shot(int x, int y, int width, int height,
 	y1 = MIN(y1, screen->height_in_pixels);
 	width = x1 - x;
 	height = y1 - y;
-	
+
 	*res = NULL;
 	if (shm_available) {
 		xcb_shm_get_image_cookie_t cookie =
@@ -188,7 +188,7 @@ ExcCode screen_shot(int x, int y, int width, int height,
 	}
 	if (*res == NULL)
 		PANIC(ERR_IMAGE);
-		
+
 	if (cursor_capturing_enabled && cursor_available)
 		screen_cursor_blend(x, y, *res);
 	return 0;
@@ -319,7 +319,7 @@ ExcCode screen_window_get_geometry(xcb_window_t window,
 void find_window_by_property(xcb_window_t window, xcb_atom_t property,
 		xcb_window_t *res) {
 	*res = XCB_WINDOW_NONE;
-	
+
 	xcb_get_property_cookie_t get_property_cookie =
 			xcb_get_property(display, 0, window, property, XCB_ATOM_ANY, 0, 0);
 	xcb_get_property_reply_t *get_property_reply =
@@ -332,7 +332,7 @@ void find_window_by_property(xcb_window_t window, xcb_atom_t property,
 		}
 		free(get_property_reply);
 	}
-	
+
 	xcb_query_tree_cookie_t query_tree_cookie =
 			xcb_query_tree(display, window);
 	xcb_query_tree_reply_t *query_tree_reply =
@@ -395,9 +395,9 @@ ExcCode screen_window_resize(xcb_window_t window, int width, int height) {
 	xcb_window_t client_window;
 	find_toplevel_window(window, &client_window);
 	get_client_window(client_window, &client_window);
-	
+
 	TRY(screen_window_unmaximize(client_window));
-	
+
 	int coord, prev_width, prev_height;
 	TRY(screen_window_get_geometry(window, &coord, &coord,
 			&prev_width, &prev_height));

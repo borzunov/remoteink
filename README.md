@@ -256,7 +256,7 @@ Alternatives
 
 * You can prefer a VNC client for Pocketbook created by *othb08me09zp* (and slightly modified by me). It uses the popular cross-platform protocol but may be less convenient for managing windows during daily work.
 
-	[Download](https://goo.gl/iBnDGZ) | [Discussion](http://www.the-ebook.org/forum/viewtopic.php?t=21814) (in Russian)
+	[Download](https://drive.google.com/file/d/0B-tJEFZy15g8NDA0OW1fNHN1dUE/view?usp=sharing&resourcekey=0-k22RckjdT_Ikh1NpMCyTSw) | [Discussion](http://www.the-ebook.org/forum/viewtopic.php?t=21814) (in Russian)
 
 What else can be implemented?
 -----------------------------
